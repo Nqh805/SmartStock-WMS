@@ -1,0 +1,243 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:insert="~{fragments :: html_head}"></head>
+  <body class="overflow-hidden bg-light">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i
+          ><span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i
+          ><span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+
+        <div class="row justify-content-center">
+          <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0 mt-3 rounded-4">
+              <form
+                th:action="@{/accounts/profile/update}"
+                method="post"
+                enctype="multipart/form-data"
+              >
+                <div
+                  class="card-header bg-white border-bottom-0 pt-5 pb-0 text-center rounded-top-4"
+                >
+                  <div
+                    class="position-relative d-inline-block"
+                    style="cursor: pointer"
+                    onclick="document.getElementById('avatarInput').click()"
+                    title="Nhấn để đổi ảnh đại diện"
+                  >
+                    <img
+                      th:src="${employee.user.avatarUrl != null ? employee.user.avatarUrl : '/asset/avatar.png'}"
+                      id="avatarPreview"
+                      alt="Avatar"
+                      class="rounded-circle shadow-sm"
+                      style="
+                        width: 130px;
+                        height: 130px;
+                        object-fit: cover;
+                        border: 4px solid #fff;
+                      "
+                    />
+
+                    <div
+                      class="position-absolute bottom-0 end-0 bg-light border border-secondary rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                      style="
+                        width: 32px;
+                        height: 32px;
+                        transform: translate(-10%, -10%);
+                      "
+                    >
+                      <i class="bi bi-camera-fill text-secondary"></i>
+                    </div>
+                  </div>
+
+                  <input
+                    type="file"
+                    id="avatarInput"
+                    name="avatarFile"
+                    class="d-none"
+                    accept="image/*"
+                    onchange="previewAvatar(this)"
+                  />
+
+                  <h3
+                    class="mt-3 fw-bold text-dark"
+                    th:text="${employee.fullName}"
+                  >
+                    Họ và Tên
+                  </h3>
+                  <p
+                    class="text-muted mb-2 font-monospace fs-5"
+                    th:text="'@' + ${employee.user.username}"
+                  >
+                    @username
+                  </p>
+                  <div class="mb-2">
+                    <span
+                      class="badge bg-primary px-3 py-2"
+                      th:each="role : ${employee.user.roles}"
+                      th:text="${role.description}"
+                      >Role</span
+                    >
+                  </div>
+                </div>
+
+                <div class="card-body p-4 pt-4">
+                  <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                    Thông tin cá nhân
+                  </h6>
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold"
+                      >Họ và tên <span class="text-danger">*</span></label
+                    >
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"
+                        ><i class="bi bi-person"></i
+                      ></span>
+                      <input
+                        type="text"
+                        name="fullName"
+                        class="form-control"
+                        th:value="${employee.fullName}"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold"
+                        >Số điện thoại</label
+                      >
+                      <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"
+                          ><i class="bi bi-telephone"></i
+                        ></span>
+                        <input
+                          type="text"
+                          name="phone"
+                          class="form-control"
+                          th:value="${employee.phone}"
+                        />
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold"
+                        >Địa chỉ Email</label
+                      >
+                      <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"
+                          ><i class="bi bi-envelope"></i
+                        ></span>
+                        <input
+                          type="email"
+                          name="email"
+                          class="form-control"
+                          th:value="${employee.email}"
+                        />
+                      </div>
+                    </div>
+                    <div class="col-md-12 mt-3">
+                      <label class="form-label fw-semibold text-primary"
+                        >Cơ sở / Nơi làm việc</label
+                      >
+                      <div class="input-group">
+                        <span class="input-group-text bg-light text-muted"
+                          ><i class="bi bi-building"></i
+                        ></span>
+                        <select name="wareHouseId" class="form-select">
+                          <option value="">
+                            -- Quản trị toàn hệ thống / Chưa gắn kho --
+                          </option>
+                          <option
+                            th:each="w : ${warehouses}"
+                            th:value="${w.id}"
+                            th:text="${w.name}"
+                            th:selected="${employee.wareHouse != null and employee.wareHouse.id == w.id}"
+                          ></option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <h6
+                    class="fw-bold text-secondary mb-3 border-bottom pb-2 mt-4"
+                  >
+                    Bảo mật tài khoản
+                  </h6>
+                  <div class="mb-4">
+                    <label class="form-label fw-semibold"
+                      >Đổi mật khẩu mới</label
+                    >
+                    <div class="input-group">
+                      <span class="input-group-text bg-light text-muted"
+                        ><i class="bi bi-shield-lock"></i
+                      ></span>
+                      <input
+                        type="password"
+                        name="newPassword"
+                        class="form-control border-warning"
+                        placeholder="Bỏ trống nếu không muốn đổi mật khẩu"
+                      />
+                    </div>
+                    <small class="text-muted mt-1 d-block"
+                      ><i class="bi bi-info-circle me-1"></i>Mật khẩu sẽ được tự
+                      động mã hóa bảo mật 1 chiều trước khi lưu.</small
+                    >
+                  </div>
+
+                  <div class="d-grid mt-4">
+                    <button
+                      type="submit"
+                      class="btn btn-primary py-2 fw-bold shadow-sm"
+                    >
+                      <i class="bi bi-save me-2"></i>Lưu Thay Đổi
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+    <script>
+      // Hàm Preview ảnh ngay lập tức khi vừa chọn file
+      function previewAvatar(input) {
+        if (input.files && input.files[0]) {
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            document.getElementById("avatarPreview").src = e.target.result;
+          };
+          reader.readAsDataURL(input.files[0]);
+        }
+      }
+    </script>
+  </body>
+</html>

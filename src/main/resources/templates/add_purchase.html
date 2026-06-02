@@ -1,0 +1,406 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:replace="~{fragments :: html_head}"> </head>
+  <body class="purchase-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show mb-4"
+          role="alert"
+        >
+          <span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h1>Tạo Đơn Mua Hàng</h1>
+            <p class="text-muted mb-0">
+              Lập đơn đặt hàng mới từ nhà cung cấp và thiết lập điều phối kho.
+            </p>
+          </div>
+        </div>
+        <hr />
+
+        <form
+          id="purchaseForm"
+          th:action="@{/purchases/add}"
+          th:object="${purchaseOrder}"
+          method="post"
+        >
+          <div class="card p-4 shadow-sm border-0 bg-white">
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2">
+              <i class="bi bi-info-circle me-2"></i>Thông tin đơn hàng
+            </h5>
+
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <label for="code" class="form-label fw-semibold"
+                  >Mã đơn hàng <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  id="code"
+                  th:field="*{code}"
+                  class="form-control"
+                  placeholder="Hệ thống tự sinh nếu để trống..."
+                />
+              </div>
+              <div class="col-md-4">
+                <label for="name" class="form-label fw-semibold"
+                  >Tên đơn mua hàng <span class="text-danger">*</span></label
+                >
+                <input
+                  type="text"
+                  id="name"
+                  th:field="*{name}"
+                  class="form-control"
+                  placeholder="Nhập tên hoặc mục đích mua hàng..."
+                  required
+                />
+              </div>
+              <div class="col-md-4">
+                <label for="expectedArrival" class="form-label fw-semibold"
+                  >Ngày dự kiến tới <span class="text-danger">*</span></label
+                >
+                <input
+                  type="date"
+                  id="expectedArrival"
+                  th:field="*{expectedArrival}"
+                  class="form-control"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="supplier" class="form-label fw-semibold"
+                  >Nhà cung cấp <span class="text-danger">*</span></label
+                >
+                <select
+                  id="supplier"
+                  th:field="*{supplier.id}"
+                  class="form-select"
+                  required
+                >
+                  <option value="">-- Chọn Nhà cung cấp --</option>
+                  <option
+                    th:each="sup : ${suppliers}"
+                    th:value="${sup.id}"
+                    th:text="${sup.name}"
+                  ></option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label for="wareHouse" class="form-label fw-semibold"
+                  >Kho nhận hàng <span class="text-danger">*</span></label
+                >
+                <select
+                  id="wareHouse"
+                  th:field="*{wareHouse.id}"
+                  class="form-select"
+                  required
+                  onchange="updateWarehouseAddress(this)"
+                >
+                  <option value="" data-address="">
+                    -- Chọn Kho lưu trữ --
+                  </option>
+                  <option
+                    th:each="wh : ${warehouses}"
+                    th:value="${wh.id}"
+                    th:text="${wh.name}"
+                    th:data-address="${wh.location != null ? wh.location : 'Chưa có thông tin địa chỉ'}"
+                  ></option>
+                </select>
+                <div
+                  class="mt-2 text-muted small"
+                  style="display: none"
+                  id="warehouseAddressContainer"
+                >
+                  <i class="bi bi-geo-alt-fill me-1 text-danger"></i>
+                  <span id="warehouseAddressText"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-12">
+                <label for="note" class="form-label fw-semibold"
+                  >Ghi chú đơn hàng</label
+                >
+                <textarea
+                  id="note"
+                  th:field="*{note}"
+                  class="form-control"
+                  rows="2"
+                  placeholder="Nhập điều khoản giao hàng, chiết khấu tổng hoặc yêu cầu kèm theo..."
+                ></textarea>
+              </div>
+            </div>
+
+            <h5 class="fw-bold text-dark mb-3 border-bottom pb-2 mt-2">
+              <i class="bi bi-box-seam me-2"></i>Danh sách sản phẩm đặt mua
+            </h5>
+
+            <div class="table-responsive border rounded mb-3">
+              <table
+                class="table table-striped align-middle mb-0"
+                id="productItemsTable"
+              >
+                <thead class="table-light text-center">
+                  <tr>
+                    <th style="width: 30%">
+                      Sản phẩm <span class="text-danger">*</span>
+                    </th>
+                    <th style="width: 8%">ĐVT</th>
+                    <th style="width: 10%">SL</th>
+                    <th style="width: 14%">Đơn giá (đ)</th>
+                    <th style="width: 10%" title="Tỷ lệ chiết khấu">% CK</th>
+                    <th style="width: 13%" title="Tiền chiết khấu">
+                      Tiền CK (đ)
+                    </th>
+                    <th style="width: 12%">Thành tiền</th>
+                    <th style="width: 3%">Xóa</th>
+                  </tr>
+                </thead>
+                <tbody id="purchaseItemsBody">
+                  <th:block
+                    th:if="*{orderDetails != null and !orderDetails.isEmpty()}"
+                  >
+                    <tr
+                      class="item-row"
+                      th:each="detail, stat : *{orderDetails}"
+                    >
+                      <td>
+                        <select
+                          th:name="|orderDetails[${stat.index}].product.id|"
+                          class="form-select form-select-sm product-select"
+                          required
+                        >
+                          <option value="">-- Chọn SP --</option>
+                          <option
+                            th:each="prod : ${products}"
+                            th:value="${prod.id}"
+                            th:text="${prod.name}"
+                            th:data-unit="${prod.unit}"
+                            th:selected="${detail.product != null and detail.product.id == prod.id}"
+                          ></option>
+                        </select>
+                      </td>
+                      <td
+                        class="text-center fw-medium text-secondary unit-cell"
+                        style="font-size: 0.9rem"
+                      >
+                        -
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          th:name="|orderDetails[${stat.index}].quantity|"
+                          th:value="${detail.quantity}"
+                          class="form-control form-control-sm text-center qty-input"
+                          min="1"
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          th:name="|orderDetails[${stat.index}].unitPrice|"
+                          th:value="${detail.unitPrice}"
+                          class="form-control form-control-sm text-end price-input"
+                          min="0"
+                          required
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm text-center discount-percent-input"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value="0"
+                          placeholder="0%"
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="number"
+                          th:name="|orderDetails[${stat.index}].discountAmount|"
+                          th:value="${detail.discountAmount != null ? detail.discountAmount : 0}"
+                          class="form-control form-control-sm text-end discount-amount-input bg-light"
+                          min="0"
+                          readonly
+                          tabindex="-1"
+                        />
+                      </td>
+
+                      <td
+                        class="text-end fw-bold row-total text-danger"
+                        style="font-size: 0.95rem"
+                      >
+                        0 đ
+                      </td>
+                      <td class="text-center">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger border-0"
+                          onclick="removeRow(this)"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </th:block>
+
+                  <th:block
+                    th:if="*{orderDetails == null or orderDetails.isEmpty()}"
+                  >
+                    <tr class="item-row">
+                      <td>
+                        <select
+                          name="orderDetails[0].product.id"
+                          class="form-select form-select-sm product-select"
+                          required
+                        >
+                          <option value="">-- Chọn SP --</option>
+                          <option
+                            th:each="prod : ${products}"
+                            th:value="${prod.id}"
+                            th:text="${prod.name}"
+                            th:data-unit="${prod.unit}"
+                          ></option>
+                        </select>
+                      </td>
+                      <td
+                        class="text-center fw-medium text-secondary unit-cell"
+                        style="font-size: 0.9rem"
+                      >
+                        -
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          name="orderDetails[0].quantity"
+                          class="form-control form-control-sm text-center qty-input"
+                          min="1"
+                          value="1"
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          name="orderDetails[0].unitPrice"
+                          class="form-control form-control-sm text-end price-input"
+                          min="0"
+                          placeholder="0"
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          class="form-control form-control-sm text-center discount-percent-input"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value="0"
+                          placeholder="0%"
+                        />
+                      </td>
+
+                      <td>
+                        <input
+                          type="number"
+                          name="orderDetails[0].discountAmount"
+                          class="form-control form-control-sm text-end discount-amount-input bg-light"
+                          min="0"
+                          value="0"
+                          readonly
+                          tabindex="-1"
+                        />
+                      </td>
+                      <td
+                        class="text-end fw-bold row-total text-danger"
+                        style="font-size: 0.95rem"
+                      >
+                        0 đ
+                      </td>
+                      <td class="text-center">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-danger border-0"
+                          onclick="removeRow(this)"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  </th:block>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary fw-medium"
+                onclick="addNewRow()"
+              >
+                <i class="bi bi-plus-circle me-1"></i>Thêm sản phẩm
+              </button>
+              <div class="text-end pe-3">
+                <span class="text-muted me-2">Tổng giá trị đơn hàng:</span>
+                <span class="fs-4 fw-bold text-danger" id="grandTotal"
+                  >0 đ</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 pt-3 border-top d-flex justify-content-start">
+            <button
+              class="btn btn-secondary px-4 me-2"
+              type="button"
+              onclick="window.location.href = '/purchases/view'"
+            >
+              Hủy bỏ
+            </button>
+            <button type="submit" class="btn btn-primary px-4 fw-medium">
+              <i class="bi bi-cloud-arrow-up me-1"></i>Lập Đơn Hàng
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+    <script th:src="@{/js/add_purchase.js}"></script>
+  </body>
+</html>

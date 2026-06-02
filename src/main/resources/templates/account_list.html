@@ -1,0 +1,236 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:insert="~{fragments :: html_head}"></head>
+  <body class="overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i
+          ><span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i
+          ><span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+
+        <h2>Quản lý Tài khoản & Nhân viên</h2>
+        <p class="text-muted mb-0">
+          Quản lý quyền truy cập và thông tin nhân sự trong hệ thống.
+        </p>
+
+        <div class="card mb-4 mt-3 shadow-sm border-0">
+          <div class="card-body">
+            <form
+              th:action="@{/accounts/manage}"
+              method="get"
+              class="row g-3 align-items-end"
+            >
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Tìm kiếm nhân viên</label>
+                <div class="input-group shadow-sm">
+                  <span class="input-group-text bg-white border-end-0"
+                    ><i class="bi bi-search text-muted"></i
+                  ></span>
+                  <input
+                    type="text"
+                    name="keyword"
+                    class="form-control border-start-0"
+                    placeholder="Nhập tên, số điện thoại, tên đăng nhập..."
+                    th:value="${keyword}"
+                  />
+                </div>
+              </div>
+              <div class="col-md-6 d-flex gap-2 justify-content-end">
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                  Tìm kiếm
+                </button>
+                <a
+                  th:href="@{/accounts/manage}"
+                  class="btn btn-outline-secondary shadow-sm"
+                  >Xóa lọc</a
+                >
+                <a
+                  th:href="@{/accounts/add}"
+                  class="btn btn-success text-nowrap ms-3 shadow-sm"
+                >
+                  <i class="bi bi-person-plus-fill me-1"></i> Tạo tài khoản mới
+                </a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table
+                class="table table-striped table-hover align-middle mb-0 text-nowrap"
+              >
+                <thead class="table-light align-middle text-center">
+                  <tr>
+                    <th>STT</th>
+                    <th class="text-start">Họ và Tên</th>
+                    <th>Tên đăng nhập</th>
+                    <th>SĐT / Email</th>
+                    <th>Vai trò</th>
+                    <th>Nơi làm việc</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr th:each="emp, state : ${employees}">
+                    <td
+                      class="text-center text-muted"
+                      th:text="${(currentPage - 1) * 10 + state.index + 1}"
+                    ></td>
+
+                    <td
+                      class="fw-bold text-dark text-start"
+                      th:text="${emp.fullName}"
+                    ></td>
+
+                    <td
+                      class="text-center font-monospace text-primary fw-bold"
+                      th:text="${emp.user?.username}"
+                    ></td>
+
+                    <td class="text-center">
+                      <div th:text="${emp.phone}"></div>
+                      <small class="text-muted" th:text="${emp.email}"></small>
+                    </td>
+
+                    <td class="text-center">
+                      <span
+                        class="badge bg-info text-dark"
+                        th:if="${!emp.user.roles.isEmpty()}"
+                        th:text="${emp.user.roles.iterator().next().description}"
+                      ></span>
+                    </td>
+
+                    <td
+                      class="text-center fw-medium text-secondary"
+                      th:text="${emp.wareHouse != null ? emp.wareHouse.name : 'Chưa phân kho'}"
+                    ></td>
+
+                    <td class="text-center">
+                      <span
+                        th:if="${emp.user?.status?.name() == 'ACTIVE'}"
+                        class="badge bg-success"
+                        ><i class="bi bi-check-circle me-1"></i>Đang hoạt
+                        động</span
+                      >
+                      <span
+                        th:if="${emp.user?.status?.name() == 'INACTIVE'}"
+                        class="badge bg-danger"
+                        ><i class="bi bi-lock-fill me-1"></i>Đã khóa</span
+                      >
+                    </td>
+
+                    <td class="text-center">
+                      <a
+                        th:href="@{/accounts/edit/{id}(id=${emp.id})}"
+                        class="btn btn-sm btn-outline-primary"
+                        title="Chỉnh sửa"
+                      >
+                        <i class="bi bi-pencil-square"></i>
+                      </a>
+
+                      <form
+                        th:action="@{/accounts/lock/{id}(id=${emp.id})}"
+                        method="post"
+                        class="d-inline"
+                      >
+                        <button
+                          type="submit"
+                          class="btn btn-sm ms-1"
+                          th:classappend="${emp.user?.status?.name() == 'ACTIVE'} ? 'btn-outline-danger' : 'btn-outline-success'"
+                          th:title="${emp.user?.status?.name() == 'ACTIVE'} ? 'Khóa tài khoản này' : 'Mở khóa tài khoản'"
+                          onclick="
+                            return confirm(
+                              'Bạn có chắc chắn muốn thay đổi trạng thái tài khoản này?',
+                            );
+                          "
+                        >
+                          <i
+                            class="bi"
+                            th:classappend="${emp.user?.status?.name() == 'ACTIVE'} ? 'bi-lock-fill' : 'bi-unlock-fill'"
+                          ></i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                  <tr th:if="${#lists.isEmpty(employees)}">
+                    <td colspan="8" class="text-center py-5 text-muted">
+                      <i class="bi bi-person-x fs-2 d-block mb-2"></i>Không tìm
+                      thấy tài khoản nào.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <nav th:if="${totalPages > 1}" class="mt-4">
+          <ul class="pagination justify-content-center shadow-sm">
+            <li
+              class="page-item"
+              th:classappend="${currentPage == 1} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/accounts/manage(page=${currentPage - 1}, keyword=${keyword})}"
+                >Trước</a
+              >
+            </li>
+            <li
+              class="page-item"
+              th:each="i : ${#numbers.sequence(1, totalPages)}"
+              th:classappend="${currentPage == i} ? 'active'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/accounts/manage(page=${i}, keyword=${keyword})}"
+                th:text="${i}"
+              ></a>
+            </li>
+            <li
+              class="page-item"
+              th:classappend="${currentPage == totalPages} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/accounts/manage(page=${currentPage + 1}, keyword=${keyword})}"
+                >Sau</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+  </body>
+</html>

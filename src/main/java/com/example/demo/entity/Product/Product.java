@@ -36,8 +36,20 @@ public class Product {
     @Column(name = "status", nullable = false)
     private ProductStatus status;
 
-    @Column(name = "base_price")
+    // 1. GIÁ BÁN NIÊM YẾT (Dùng cho luồng Bán hàng)
+    @Column(name = "base_price", precision = 15, scale = 2)
     private BigDecimal basePrice;
+
+    // 2. GIÁ VỐN TRUNG BÌNH - MAC (Dùng cho Kế toán tính lãi lỗ)
+    @Column(name = "cost_price", precision = 15, scale = 2)
+    private BigDecimal costPrice;
+
+    // 3. GIÁ NHẬP THAM CHIẾU
+    @Column(name = "standard_cost", precision = 15, scale = 2)
+    private BigDecimal standardCost;
+
+    @Column(name = "tax_rate", precision = 5, scale = 2, nullable = false)
+    private BigDecimal taxRate = new BigDecimal("10.00");
 
     @Column(name = "unit", nullable = false, length = 50)
     private String unit = "Cái";
@@ -51,14 +63,26 @@ public class Product {
     @Column(name = "min_stock_level", nullable = false)
     private Integer minStockLevel = 0;
 
-    @Column(name = "tax_rate", precision = 5, scale = 2, nullable = false)
-    private BigDecimal taxRate = new BigDecimal("10.00");
     @Column(name = "technical_specs", length = 1000)
     private String technicalSpecs;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
     @Transient
     private Integer totalQuantity;
+
+    @Transient
+    private BigDecimal finalSellingPrice;
+
+    public BigDecimal getFinalSellingPrice() {
+        if (this.basePrice == null)
+            return BigDecimal.ZERO;
+        if (this.taxRate == null || this.taxRate.compareTo(BigDecimal.ZERO) == 0)
+            return this.basePrice;
+
+        BigDecimal taxAmount = this.basePrice.multiply(this.taxRate).divide(new BigDecimal("100"));
+        return this.basePrice.add(taxAmount);
+    }
 }

@@ -1,5 +1,9 @@
 <!doctype html>
-<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<html
+  lang="vi"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+>
   <head th:fragment="html_head">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -95,23 +99,42 @@
               href="#"
               data-bs-toggle="dropdown"
             >
-              <img th:src="@{/asset/avatar.png}" class="rounded-circle me-2" />
+              <img
+                th:src="${currentUserAvatar}"
+                class="rounded-circle me-2 shadow-sm"
+                style="width: 35px; height: 35px; object-fit: cover"
+              />
               <div class="acc-text">
-                <span id="acc-name">Huy Nguyen</span>
+                <span
+                  id="acc-name"
+                  class="fw-bold text-dark"
+                  sec:authentication="name"
+                  >User</span
+                >
               </div>
             </a>
 
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="#">Hồ Sơ</a></li>
-              <li><a class="dropdown-item" href="#">Cài Đặt</a></li>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2">
+              <li>
+                <a class="dropdown-item py-2" th:href="@{/accounts/profile}"
+                  ><i class="bi bi-person-circle me-2 text-secondary"></i>Hồ Sơ
+                  Cá Nhân</a
+                >
+              </li>
+              <li>
+                <a class="dropdown-item py-2" href="#"
+                  ><i class="bi bi-gear me-2 text-secondary"></i>Cài Đặt</a
+                >
+              </li>
               <li><hr class="dropdown-divider" /></li>
               <li>
                 <a
-                  class="dropdown-item text-danger"
-                  th:href="@{/login}"
+                  class="dropdown-item text-danger py-2 fw-bold"
+                  th:href="@{/logout}"
                   id="log-out"
-                  >Đăng Xuất</a
                 >
+                  <i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất
+                </a>
               </li>
             </ul>
           </div>
@@ -139,10 +162,42 @@
             >
           </li>
 
-          <li class="nav-item mb-1">
-            <a th:href="@{/products/view}" id="menu-product">
-              <i class="fa-solid fa-cart-flatbed"></i> Sản Phẩm
+          <li class="sidebar-item nav-item mb-1">
+            <a
+              class="sidebar-link collapsed"
+              data-bs-toggle="collapse"
+              data-bs-target="#warehouse-collapse"
+              aria-expanded="false"
+            >
+              <i class="fa-solid fa-warehouse"></i>
+              <span class="topic">Quản Lý Kho </span>
             </a>
+            <ul
+              id="warehouse-collapse"
+              class="sidebar-dropdown list-unstyled collapse ps-3"
+            >
+              <li class="sidebar-item">
+                <a th:href="@{/products/view}" class="sidebar-link">
+                  <i class="fa-solid fa-box-open me-2"></i> Danh Mục Sản Phẩm
+                </a>
+              </li>
+              <li class="sidebar-item">
+                <a th:href="@{/batches/view}" class="sidebar-link">
+                  <i class="fa-solid fa-layer-group me-2"></i> Quản lý Lô Hàng
+                </a>
+              </li>
+              <li class="sidebar-item">
+                <a th:href="@{/locations/view}" class="sidebar-link">
+                  <i class="fa-solid fa-map-location-dot me-2"></i> Vị Trí / Kệ
+                  hàng
+                </a>
+              </li>
+              <li class="sidebar-item">
+                <a th:href="@{/warehouses/view}" class="sidebar-link">
+                  <i class="fa-solid fa-map-location-dot me-2"></i> Nhà Kho
+                </a>
+              </li>
+            </ul>
           </li>
 
           <li class="sidebar-item nav-item mb-1">
@@ -152,7 +207,7 @@
               data-bs-target="#order-collapse"
               aria-expanded="false"
             >
-              <i class="fa-solid fa-truck-moving"></i>
+              <i class="fa-solid fa-file-invoice-dollar"></i>
               <span class="topic">Đơn Hàng</span>
             </a>
             <ul
@@ -160,14 +215,35 @@
               class="sidebar-dropdown list-unstyled collapse ps-3"
             >
               <li class="sidebar-item">
-                <a th:href="@{/purchases/view}" class="sidebar-link"
-                  >Nhập Hàng</a
-                >
+                <a th:href="@{/purchases/view}" class="sidebar-link">
+                  <i class="fa-solid fa-cart-arrow-down me-2"></i> Đơn Nhập Hàng
+                </a>
               </li>
               <li class="sidebar-item">
-                <a th:href="@{/deliveries/view}" class="sidebar-link"
-                  >Xuất Hàng</a
+                <a th:href="@{/sales/view}" class="sidebar-link">
+                  <i class="fa-solid fa-money-bill-trend-up me-2"></i> Đơn Bán
+                  Hàng
+                </a>
+              </li>
+
+              <hr class="text-white-50 my-2 mx-3" />
+
+              <li class="sidebar-item">
+                <a
+                  th:href="@{/rma/check-serial}"
+                  class="sidebar-link text-warning"
                 >
+                  <i class="fa-solid fa-magnifying-glass-barcode me-2"></i> Tra
+                  cứu Serial
+                </a>
+              </li>
+              <li class="sidebar-item">
+                <a
+                  th:href="@{/rma/warranties}"
+                  class="sidebar-link text-warning"
+                >
+                  <i class="fa-solid fa-rotate-left me-2"></i> Bảo Hành
+                </a>
               </li>
             </ul>
           </li>
@@ -187,21 +263,20 @@
               class="sidebar-dropdown list-unstyled collapse ps-3"
             >
               <li class="sidebar-item">
-                <a th:href="@{/suppliers/view}" class="sidebar-link"
-                  >Nhà Cung Cấp</a
-                >
+                <a th:href="@{/suppliers/view}" class="sidebar-link">
+                  <i class="fa-solid fa-truck-front me-2"></i> Nhà Cung Cấp
+                </a>
               </li>
               <li class="sidebar-item">
-                <a th:href="@{/customers/view}" class="sidebar-link"
-                  >Khách Hàng</a
-                >
+                <a th:href="@{/customers/view}" class="sidebar-link">
+                  <i class="fa-solid fa-users me-2"></i> Khách Hàng
+                </a>
               </li>
             </ul>
           </li>
 
           <li class="sidebar-item nav-item mb-1">
             <a
-              th:href="@{/accounts/view}"
               class="sidebar-link collapsed"
               data-bs-toggle="collapse"
               data-bs-target="#account-collapse"
@@ -214,13 +289,15 @@
               id="account-collapse"
               class="sidebar-dropdown list-unstyled collapse ps-3"
             >
-              <li class="sidebar-item">
-                <a th:href="@{/accounts/manage}" class="sidebar-link"
-                  >Quản Lý</a
-                >
+              <li class="sidebar-item" sec:authorize="hasRole('MANAGER')">
+                <a th:href="@{/accounts/manage}" class="sidebar-link">
+                  <i class="fa-solid fa-users-gear me-2"></i> Quản Lý
+                </a>
               </li>
               <li class="sidebar-item">
-                <a th:href="@{/accounts/profile}" class="sidebar-link">Hồ Sơ</a>
+                <a th:href="@{/accounts/profile}" class="sidebar-link">
+                  <i class="fa-solid fa-address-card me-2"></i> Hồ Sơ
+                </a>
               </li>
             </ul>
           </li>
@@ -228,12 +305,12 @@
         <hr />
         <div class="mynav">
           <a
-            th:href="@{/login}"
+            th:href="@{/logout}"
             id="log-out"
-            class="d-flex align-items-center logout-link"
+            class="d-flex align-items-center logout-link text-danger fw-bold"
           >
             <i class="fas fa-sign-out-alt"></i>
-            <span>Log Out</span>
+            <span>Đăng Xuất</span>
           </a>
         </div>
       </div>

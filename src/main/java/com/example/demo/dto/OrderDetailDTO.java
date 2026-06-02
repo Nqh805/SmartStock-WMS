@@ -13,33 +13,34 @@ public class OrderDetailDTO {
     private Integer putawayQuantity;
     private BigDecimal discount;
     private String warehouse;
-
-    // Đối tượng ProductDTO lồng bên trong
     private ProductDTO product;
+    private Integer warrantyMonths;
 
     public OrderDetailDTO(OrderDetail detail) {
         this.id = detail.getId();
         this.price = detail.getUnitPrice();
         this.quantity = detail.getQuantity();
+        this.putawayQuantity = detail.getPutawayQuantity() != null ? detail.getPutawayQuantity() : 0;
         this.actualQuantity = detail.getActualQuantity() != null ? detail.getActualQuantity() : 0;
         this.discount = detail.getDiscountAmount() != null ? detail.getDiscountAmount() : BigDecimal.ZERO;
 
         // Tự động map đối tượng con
-        this.product = new ProductDTO(detail.getProduct());
+        if (detail.getProduct() != null) {
+            this.product = new ProductDTO(detail.getProduct());
+        } else {
+            this.product = null;
+        }
 
-        // Lấy thông tin kho từ bảng cha OrderHeader sau khi bạn đã dời cột
-        // ware_house_id
         if (detail.getOrderHeader() != null && detail.getOrderHeader().getWareHouse() != null) {
             this.warehouse = detail.getOrderHeader().getWareHouse().getName();
         } else {
             this.warehouse = "N/A";
         }
 
-        // Tính toán số lượng đã cất dựa theo unallocated_quantity của Lô hàng
-        if (detail.getImportBatch() != null && detail.getImportBatch().getUnallocatedQuantity() != null) {
-            this.putawayQuantity = this.actualQuantity - detail.getImportBatch().getUnallocatedQuantity();
+        if (detail.getProduct() != null && detail.getProduct().getWarrantyMonths() != null) {
+            this.warrantyMonths = detail.getProduct().getWarrantyMonths();
         } else {
-            this.putawayQuantity = 0;
+            this.warrantyMonths = 0;
         }
     }
 }

@@ -1,0 +1,509 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:insert="~{fragments :: html_head}"> </head>
+  <body class="sales-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i
+          ><span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i
+          ><span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+
+        <h2>Danh sách Đơn bán hàng</h2>
+        <p class="text-muted mb-0">
+          Quản lý các đơn xuất bán cho Khách hàng và theo dõi công nợ.
+        </p>
+
+        <div class="card mb-4 mt-3 shadow-sm">
+          <div class="card-body">
+            <form th:action="@{/sales/view}" method="get" class="row g-3">
+              <div class="col-md-6">
+                <label for="keyword" class="form-label fw-bold"
+                  >Tìm kiếm đơn bán</label
+                >
+                <div class="input-group">
+                  <span class="input-group-text bg-white"
+                    ><i class="bi bi-search text-muted"></i
+                  ></span>
+                  <input
+                    type="text"
+                    name="keyword"
+                    class="form-control border-start-0"
+                    placeholder="Nhập mã đơn, tên khách hàng, SĐT..."
+                    th:value="${keyword}"
+                  />
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <label for="startDate" class="form-label fw-bold"
+                  >Từ ngày</label
+                >
+                <input
+                  type="date"
+                  name="startDate"
+                  id="startDate"
+                  class="form-control"
+                  th:value="${startDate}"
+                />
+              </div>
+
+              <div class="col-md-3">
+                <label for="endDate" class="form-label fw-bold">Đến ngày</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  id="endDate"
+                  class="form-control"
+                  th:value="${endDate}"
+                />
+              </div>
+
+              <div
+                class="col-12 d-flex gap-2 justify-content-end border-top pt-3 mt-3"
+              >
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                  Lọc dữ liệu
+                </button>
+                <a
+                  th:href="@{/sales/view}"
+                  class="btn btn-outline-secondary shadow-sm"
+                  >Xóa lọc</a
+                >
+                <a
+                  th:href="@{/sales/add}"
+                  class="btn btn-success text-nowrap ms-3 shadow-sm"
+                  ><i class="bi bi-plus-lg me-1"></i> Tạo đơn bán</a
+                >
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table
+                class="table table-striped table-bordered border-dark border-opacity-25 table-hover mb-0"
+              >
+                <thead
+                  class="sticky-top bg-white align-middle text-center"
+                  style="z-index: 1"
+                >
+                  <tr>
+                    <th>STT</th>
+                    <th>Mã Đơn</th>
+                    <th>Khách Hàng</th>
+                    <th>Kho Xuất</th>
+                    <th>Ngày Tạo</th>
+                    <th>Tổng Tiền</th>
+                    <th>Trạng Thái</th>
+                    <th>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    th:each="so, state : ${salesOrders}"
+                    style="cursor: pointer"
+                    title="Click đúp để xem chi tiết"
+                    ondblclick="openSalesDetailModal(this)"
+                    th:data-id="${so.id}"
+                    th:data-code="${so.code}"
+                    th:data-customer="${so.customer != null ? so.customer.name : 'Khách vãng lai'}"
+                    th:data-destination="${so.destination != null ? so.destination : 'Khách mua tại quầy'}"
+                    th:data-cod="${so.cod != null ? so.cod : 0}"
+                    th:data-warehouse="${so.wareHouse != null ? so.wareHouse.name : 'Chưa phân kho'}"
+                    th:data-created="${so.createdAt != null ? #temporals.format(so.createdAt, 'dd/MM/yyyy HH:mm') : ''}"
+                    th:data-amount="${so.totalSalesAmount != null ? so.totalSalesAmount : 0}"
+                    th:data-paid="${so.paidAmount != null ? so.paidAmount : 0}"
+                    th:data-payment="${so.paymentStatus != null ? so.paymentStatus.name() : 'UNPAID'}"
+                    th:data-status="${so.status != null ? so.status.name() : 'COMPLETED'}"
+                    th:data-note="${so.note}"
+                  >
+                    <td
+                      class="text-center align-middle"
+                      th:text="${(currentPage - 1) * 10 + state.index + 1}"
+                    ></td>
+                    <td
+                      class="align-middle text-center fw-bold text-primary"
+                      th:text="${so.code}"
+                    ></td>
+                    <td
+                      class="align-middle fw-medium"
+                      th:text="${so.customer != null ? so.customer.name : 'Khách vãng lai'}"
+                    ></td>
+                    <td
+                      class="align-middle fw-semibold text-secondary"
+                      th:text="${so.wareHouse != null ? so.wareHouse.name : 'N/A'}"
+                    ></td>
+                    <td
+                      class="align-middle text-center"
+                      th:text="${so.createdAt != null ? #temporals.format(so.createdAt, 'dd/MM/yyyy HH:mm') : ''}"
+                    ></td>
+                    <td class="align-middle text-end fw-semibold text-danger">
+                      <span
+                        th:if="${so.totalSalesAmount != null}"
+                        th:text="${#numbers.formatDecimal(so.totalSalesAmount, 0, 'COMMA', 0, 'POINT')} + ' đ'"
+                      ></span>
+                    </td>
+                    <td class="align-middle text-nowrap">
+                      <div class="text-start mb-1">
+                        <span
+                          th:if="${so.status?.name() == 'COMPLETED'}"
+                          class="badge bg-success"
+                          >Hoàn tất</span
+                        >
+                        <span
+                          th:if="${so.status?.name() == 'CANCELLED'}"
+                          class="badge bg-danger"
+                          >Đã hủy</span
+                        >
+                        <span
+                          th:if="${so.status?.name() == 'REFUNDED'}"
+                          class="badge bg-warning text-dark"
+                          >Hoàn tiền</span
+                        >
+                      </div>
+                      <div class="text-start">
+                        <span
+                          th:if="${so.paymentStatus?.name() == 'PAID'}"
+                          class="text-success"
+                          style="font-size: 0.85rem"
+                          ><i class="bi bi-cash-coin me-1"></i>Đã thanh
+                          toán</span
+                        >
+                        <span
+                          th:if="${so.paymentStatus?.name() == 'PARTIAL'}"
+                          class="text-warning text-dark"
+                          style="font-size: 0.85rem"
+                          ><i class="bi bi-cash-coin me-1"></i>Thanh toán 1
+                          phần</span
+                        >
+                        <span
+                          th:if="${so.paymentStatus?.name() == 'UNPAID'}"
+                          class="text-danger"
+                          style="font-size: 0.85rem"
+                          ><i class="bi bi-credit-card me-1"></i>Chưa thanh
+                          toán</span
+                        >
+                      </div>
+                    </td>
+                    <td class="align-middle text-center">
+                      <a
+                        th:href="@{/sales/print/{id}(id=${so.id})}"
+                        target="_blank"
+                        class="btn btn-sm btn-outline-info"
+                        data-bs-toggle="tooltip"
+                        title="In hóa đơn"
+                        onclick="event.stopPropagation()"
+                      >
+                        <i class="bi bi-printer"></i>
+                      </a>
+
+                      <button
+                        th:if="${so.paymentStatus?.name() != 'PAID'}"
+                        type="button"
+                        class="btn btn-sm btn-outline-success ms-1"
+                        data-bs-toggle="tooltip"
+                        title="Thu tiền / Ghi nhận thanh toán"
+                        onclick="
+                          event.stopPropagation();
+                          openPaymentModal(this);
+                        "
+                        th:attr="data-id=${so.id}, data-code=${so.code}, data-missing=${so.totalSalesAmount - (so.paidAmount != null ? so.paidAmount : 0)}"
+                      >
+                        <i class="bi bi-wallet2"></i>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr th:if="${#lists.isEmpty(salesOrders)}">
+                    <td colspan="8" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox fs-2 d-block mb-2"></i>Không có đơn
+                      bán hàng nào.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <nav
+          th:if="${totalPages > 1}"
+          aria-label="Page navigation"
+          class="mt-4"
+        >
+          <ul class="pagination justify-content-center pagination-sm shadow-sm">
+            <li
+              class="page-item"
+              th:classappend="${currentPage == 1} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/sales/view(page=${currentPage - 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                >Trước</a
+              >
+            </li>
+
+            <li
+              class="page-item"
+              th:each="i : ${#numbers.sequence(1, totalPages)}"
+              th:classappend="${currentPage == i} ? 'active'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/sales/view(page=${i}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                th:text="${i}"
+              ></a>
+            </li>
+
+            <li
+              class="page-item"
+              th:classappend="${currentPage == totalPages} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/sales/view(page=${currentPage + 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                >Sau</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </main>
+    </div>
+
+    <div
+      class="modal fade"
+      id="salesDetailModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title text-primary fw-bold">
+              <i class="bi bi-receipt-cutoff me-2"></i>Chi tiết Đơn xuất bán
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row border-bottom pb-3 mb-4">
+              <div class="col-md-7">
+                <h4 id="detailSoCode" class="mb-3 text-dark fw-bold"></h4>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">Khách hàng:</div>
+                  <div
+                    class="col-sm-8 fw-bold text-primary"
+                    id="detailSoCustomer"
+                  ></div>
+                </div>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Địa chỉ giao:
+                  </div>
+                  <div
+                    class="col-sm-8 fw-medium text-dark"
+                    id="detailSoDestination"
+                  ></div>
+                </div>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Kho xuất hàng:
+                  </div>
+                  <div
+                    class="col-sm-8 fw-bold text-secondary"
+                    id="detailSoWarehouse"
+                  ></div>
+                </div>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Ngày tạo đơn:
+                  </div>
+                  <div class="col-sm-8" id="detailSoCreated"></div>
+                </div>
+                <div class="row mt-3">
+                  <div class="col-12 text-muted fw-semibold mb-1">
+                    Ghi chú đơn hàng:
+                  </div>
+                  <div
+                    class="col-12 p-2 bg-light border rounded text-dark"
+                    id="detailSoNote"
+                    style="min-height: 50px; font-size: 0.9rem"
+                  ></div>
+                </div>
+              </div>
+              <div class="col-md-5">
+                <div class="card bg-light border-0 shadow-sm mb-3">
+                  <div class="card-body py-3 text-end">
+                    <div class="text-muted mb-1">Tổng tiền khách phải trả</div>
+                    <h3
+                      class="text-danger fw-bold mb-0"
+                      id="detailSoAmount"
+                    ></h3>
+                  </div>
+                  <div
+                    class="d-flex justify-content-end align-items-center text-success mb-2"
+                    style="font-size: 0.95rem"
+                  >
+                    <span class="text-muted me-2">Khách đã trả trước:</span>
+                    <span class="fw-bold" id="detailSoPaidAmount"></span>
+                  </div>
+                  <hr class="m-0 mb-2" />
+                  <div
+                    class="d-flex justify-content-end align-items-center text-danger"
+                    style="font-size: 0.95rem"
+                  >
+                    <span
+                      class="text-muted me-2"
+                      title="Số tiền khách chưa thanh toán"
+                      >Còn nợ:</span
+                    >
+                    <span class="fw-bold fs-6" id="detailSoDebt"></span>
+                  </div>
+                </div>
+                <div class="row mb-3 align-items-center justify-content-end">
+                  <div class="col-auto text-muted fw-semibold">Thanh toán:</div>
+                  <div class="col-auto text-end" id="detailSoPayment"></div>
+                </div>
+                <div class="row mb-2 align-items-center justify-content-end">
+                  <div class="col-auto text-muted fw-semibold">
+                    Trạng thái đơn:
+                  </div>
+                  <div class="col-auto text-end" id="detailSoStatus"></div>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="fw-bold text-dark mb-3">
+              <i class="bi bi-box-seam me-2"></i>Sản phẩm xuất bán
+            </h6>
+            <div class="table-responsive border rounded mb-4">
+              <table
+                class="table table-hover table-striped align-middle text-nowrap mb-0"
+                style="font-size: 0.9rem"
+              >
+                <thead class="table-light text-center">
+                  <tr>
+                    <th>STT</th>
+                    <th class="text-start">Tên sản phẩm</th>
+                    <th>Mã SKU</th>
+                    <th>ĐVT</th>
+                    <th>Bảo hành</th>
+                    <th class="text-end">Đơn giá bán</th>
+                    <th>Số lượng</th>
+                    <th class="text-end">Chiết khấu</th>
+                    <th class="text-end">Thành tiền</th>
+                  </tr>
+                </thead>
+                <tbody id="detailSoProductsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary px-4"
+              data-bs-dismiss="modal"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-cash-coin me-2"></i>Thu Tiền Đơn Hàng:
+              <span id="paySoCode" class="text-warning"></span>
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="payOrderId" />
+            <div class="alert alert-warning">
+              Khách hàng hiện đang còn nợ:
+              <strong class="fs-5 text-danger" id="payMissingAmount"
+                >0 đ</strong
+              >
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-bold"
+                >Nhập số tiền thu đợt này
+                <span class="text-danger">*</span></label
+              >
+              <div class="input-group input-group-lg shadow-sm">
+                <input
+                  type="number"
+                  id="payInputAmount"
+                  class="form-control text-end fw-bold text-success"
+                  placeholder="0"
+                  min="1"
+                />
+                <span class="input-group-text bg-light fw-bold">VNĐ</span>
+              </div>
+            </div>
+            <div id="payError" class="alert alert-danger d-none mt-2"></div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary px-4"
+              data-bs-dismiss="modal"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              class="btn btn-success px-4 fw-bold"
+              onclick="submitPayment()"
+            >
+              <i class="bi bi-check-circle me-2"></i>Xác nhận thu tiền
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+    <script th:src="@{/js/sales.js}"></script>
+  </body>
+</html>

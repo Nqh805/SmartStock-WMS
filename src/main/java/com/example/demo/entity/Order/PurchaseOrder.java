@@ -25,6 +25,10 @@ public class PurchaseOrder extends OrderHeader {
     private BigDecimal totalPurchaseAmount;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private PurchaseStatus status = PurchaseStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "delivery_result")
     private DeliveryResult deliveryResult;
 
@@ -35,12 +39,25 @@ public class PurchaseOrder extends OrderHeader {
     @Column(name = "paid_amount")
     private BigDecimal paidAmount = BigDecimal.ZERO; // Mặc định ban đầu bằng 0
 
+    @Column(name = "delivery_document", length = 255)
+    private String deliveryDocument;
+
+    @Column(name = "received_note")
+    private String receivedNote;
+
+    // tính tiền còn lại
     @Transient
     public BigDecimal getRemainingAmount() {
         BigDecimal total = (this.totalPurchaseAmount != null) ? this.totalPurchaseAmount : BigDecimal.ZERO;
         BigDecimal paid = (this.paidAmount != null) ? this.paidAmount : BigDecimal.ZERO;
 
-        // Trả về kết quả: Còn lại = Tổng - Đã trả
         return total.subtract(paid);
+    }
+
+    public enum PurchaseStatus {
+        PENDING, // Chờ duyệt / Chờ giao
+        IN_TRANSIT, // Nhà cung cấp đang giao tới
+        COMPLETED, // Đã nhận hàng vào kho
+        CANCELLED // Đã hủy
     }
 }

@@ -1,0 +1,678 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:insert="~{fragments :: html_head}"></head>
+  <body class="batch-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i
+          ><span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i
+          ><span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <div>
+            <h2>Quản lý Lô hàng</h2>
+            <p class="text-muted mb-0">
+              Theo dõi tồn kho, nạp Serial/IMEI và điều chuyển vị trí hàng hóa.
+            </p>
+          </div>
+        </div>
+
+        <div class="card mb-4 mt-3 shadow-sm">
+          <div class="card-body">
+            <form
+              th:action="@{/batches/view}"
+              method="get"
+              class="row g-3 align-items-end"
+            >
+              <div class="col-md-6">
+                <label for="keyword" class="form-label fw-bold"
+                  >Tìm kiếm Lô hàng</label
+                >
+                <div class="input-group">
+                  <span class="input-group-text bg-white"
+                    ><i class="bi bi-search text-muted"></i
+                  ></span>
+                  <input
+                    type="text"
+                    name="keyword"
+                    id="keyword"
+                    class="form-control border-start-0"
+                    placeholder="Nhập mã lô BAT- hoặc tên sản phẩm..."
+                    th:value="${keyword}"
+                  />
+                </div>
+              </div>
+              <div class="col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="bi bi-funnel me-1"></i> Lọc dữ liệu
+                </button>
+                <a th:href="@{/batches/view}" class="btn btn-outline-secondary"
+                  >Xóa lọc</a
+                >
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table
+                class="table table-striped table-bordered border-dark border-opacity-25 table-hover mb-0"
+              >
+                <thead
+                  class="sticky-top bg-white align-middle text-center"
+                  style="z-index: 1"
+                >
+                  <tr>
+                    <th scope="col" class="text-nowrap">STT</th>
+                    <th scope="col" class="text-nowrap">Mã Lô Hàng</th>
+                    <th scope="col" class="text-nowrap">Sản Phẩm</th>
+                    <th scope="col" class="text-nowrap">Kho / Vị trí</th>
+                    <th scope="col" class="text-nowrap">Ngày Nhập</th>
+                    <th scope="col" class="text-nowrap">Đơn Mua Hàng</th>
+                    <th
+                      scope="col"
+                      class="text-nowrap"
+                      data-bs-toggle="tooltip"
+                      title="Giá nhập tịnh của đợt nhập này (Đã trừ chiết khấu)"
+                    >
+                      Giá Lô Nhập
+                    </th>
+                    <th scope="col" class="text-nowrap">SL Có Thể Bán</th>
+                    <th scope="col" class="text-nowrap">Tiến Độ Quét Serial</th>
+                    <th scope="col" class="text-nowrap">Trạng Thái</th>
+                    <th scope="col" class="text-nowrap">Quét Mã</th>
+                    <th scope="col" class="text-nowrap">Cất Hàng</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    th:each="batch, state : ${batches}"
+                    style="cursor: pointer"
+                    title="Click đúp để xem chi tiết lô hàng"
+                    ondblclick="openBatchDetailModal(this)"
+                    th:data-id="${batch.id}"
+                    th:data-code="${batch.batchCode}"
+                    th:data-product="${batch.product != null ? batch.product.name : 'N/A'}"
+                    th:data-warehouse="${batch.wareHouse != null ? batch.wareHouse.name : 'Chưa xếp kho'}"
+                    th:data-location="${batch.location != null ? 'Kệ: ' + batch.location.locationCode : 'Chưa xếp kệ'}"
+                    th:data-date="${batch.importDate != null ? #temporals.format(batch.importDate, 'dd/MM/yyyy') : ''}"
+                    th:data-po="${batch.purchaseOrder != null ? batch.purchaseOrder.code : 'Nhập Lẻ'}"
+                    th:data-price="${batch.price != null ? #numbers.formatDecimal(batch.price, 0, 'COMMA', 0, 'POINT') + ' đ' : 'Chưa có giá'}"
+                    th:data-available="${batch.quantityAvailable != null ? batch.quantityAvailable : 0}"
+                    th:data-onhand="${batch.quantityOnHand != null ? batch.quantityOnHand : 0}"
+                    th:data-scanned="${scannedCounts.get(batch.id)}"
+                  >
+                    <td
+                      class="text-center align-middle"
+                      th:text="${(currentPage - 1) * 10 + state.index + 1}"
+                    ></td>
+
+                    <td
+                      class="align-middle text-center fw-bold text-primary text-nowrap"
+                      th:text="${batch.batchCode}"
+                    ></td>
+
+                    <td class="align-middle fw-medium">
+                      <span
+                        th:text="${batch.product != null ? batch.product.name : 'N/A'}"
+                      ></span>
+                    </td>
+
+                    <td class="align-middle">
+                      <div
+                        th:text="${batch.wareHouse != null ? batch.wareHouse.name : 'Chưa xếp kho'}"
+                        class="fw-semibold text-secondary"
+                      ></div>
+                      <small
+                        class="text-muted"
+                        th:text="${batch.location != null ? 'Kệ: ' + batch.location.locationCode : 'Chưa xếp kệ'}"
+                      ></small>
+                    </td>
+
+                    <td
+                      class="align-middle text-center text-nowrap"
+                      th:text="${batch.importDate != null ? #temporals.format(batch.importDate, 'dd/MM/yyyy') : ''}"
+                    ></td>
+                    <td class="align-middle text-center">
+                      <span
+                        th:if="${batch.purchaseOrder != null}"
+                        th:text="${batch.purchaseOrder.code}"
+                        class="badge bg-info text-dark"
+                        style="cursor: pointer"
+                        data-bs-toggle="tooltip"
+                        title="Xem chi tiết đơn mua hàng này"
+                      >
+                      </span>
+                      <span
+                        th:if="${batch.purchaseOrder == null}"
+                        class="badge bg-secondary"
+                        >Nhập Lẻ</span
+                      >
+                    </td>
+
+                    <td class="align-middle text-end fw-bold text-danger">
+                      <span
+                        th:if="${batch.price != null}"
+                        th:text="${#numbers.formatDecimal(batch.price, 0, 'COMMA', 0, 'POINT')} + ' đ'"
+                      ></span>
+                      <span
+                        th:if="${batch.price == null}"
+                        class="text-muted fw-normal"
+                        >Chưa có giá</span
+                      >
+                    </td>
+                    <td
+                      class="align-middle text-center fw-bold"
+                      style="font-size: 0.95rem"
+                    >
+                      <span
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="(có thể bán / tổng tồn)"
+                        style="cursor: help"
+                      >
+                        <span
+                          class="text-primary"
+                          th:text="${batch.quantityAvailable != null ? batch.quantityAvailable : 0}"
+                          >0</span
+                        >
+
+                        <span class="text-muted mx-1">/</span>
+                        <span
+                          class="text-secondary"
+                          th:text="${batch.quantityOnHand != null ? batch.quantityOnHand : 0}"
+                          >0</span
+                        >
+                      </span>
+                    </td>
+
+                    <td class="align-middle text-center fw-bold">
+                      <span
+                        th:text="${scannedCounts.get(batch.id)} + ' / ' + ${batch.quantityOnHand}"
+                        th:classappend="${scannedCounts.get(batch.id) == batch.quantityOnHand} ? 'text-success' : 'text-danger'"
+                      >
+                      </span>
+                    </td>
+
+                    <td class="align-middle text-nowrap">
+                      <span
+                        th:if="${scannedCounts.get(batch.id) == 0}"
+                        class="badge bg-danger"
+                        >Chưa nạp Serial</span
+                      >
+                      <span
+                        th:if="${scannedCounts.get(batch.id) > 0 and scannedCounts.get(batch.id) < batch.quantityOnHand}"
+                        class="badge bg-warning text-dark"
+                        >Đang nạp dở</span
+                      >
+                      <span
+                        th:if="${scannedCounts.get(batch.id) == batch.quantityOnHand}"
+                        class="badge bg-success"
+                        >Hoàn tất</span
+                      >
+                    </td>
+
+                    <td class="align-middle text-center text-nowrap">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-success fw-medium"
+                        th:if="${scannedCounts.get(batch.id) < batch.quantityOnHand}"
+                        th:attr="data-id=${batch.id}, data-code=${batch.batchCode}, data-product=${batch.product != null ? batch.product.name : ''}, data-total=${batch.quantityOnHand}, data-scanned=${scannedCounts.get(batch.id)}"
+                        onclick="openScanModal(this)"
+                        data-bs-toggle="tooltip"
+                        title="Sử dụng súng quét để nạp mã"
+                      >
+                        <i class="bi bi-upc-scan"></i> Quét Serial
+                      </button>
+                    </td>
+                    <td class="align-middle text-center text-nowrap">
+                      <button
+                        type="button"
+                        class="btn btn-sm fw-medium"
+                        th:classappend="${batch.location == null ? 'btn-warning text-dark' : 'btn-outline-secondary'}"
+                        th:attr="data-id=${batch.id}, data-code=${batch.batchCode}, data-wh=${batch.wareHouse != null ? batch.wareHouse.name : ''}"
+                        onclick="
+                          event.stopPropagation();
+                          openPutawayModal(this);
+                        "
+                        data-bs-toggle="tooltip"
+                        title="Quét mã vị trí để đưa lô hàng lên kệ"
+                      >
+                        <i class="bi bi-box-arrow-in-down"></i>
+                        <span
+                          th:text="${batch.location == null ? 'Xếp Kệ' : 'Đổi Vị Trí'}"
+                        ></span>
+                      </button>
+                    </td>
+                  </tr>
+                  <tr th:if="${#lists.isEmpty(batches)}">
+                    <td colspan="9" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox fs-2 d-block mb-2"></i>Chưa có lô
+                      hàng nào trong kho.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal nạp Serial -->
+        <div
+          class="modal fade"
+          id="scanModal"
+          tabindex="-1"
+          aria-hidden="true"
+          data-bs-backdrop="static"
+        >
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold">
+                  <i class="bi bi-upc-scan me-2"></i>Nạp mã Serial cho Lô hàng:
+                  <span id="scanBatchCode" class="text-warning"></span>
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body p-4">
+                <div
+                  class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded border"
+                >
+                  <div>
+                    <div class="text-muted mb-1" style="font-size: 0.9rem">
+                      Sản phẩm:
+                    </div>
+                    <div class="fw-bold text-primary fs-6" id="scanProductName">
+                      Tên sản phẩm...
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <div class="text-muted mb-1" style="font-size: 0.9rem">
+                      Tiến độ nạp:
+                    </div>
+                    <div class="fw-bold fs-5">
+                      <span id="scanCurrentCount" class="text-success">0</span>
+                      /
+                      <span id="scanTotalCount" class="text-secondary">0</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-4">
+                  <label class="form-label fw-bold text-dark"
+                    >Sử dụng súng quét hoặc Nhập tay mã Serial
+                    <span class="text-danger">*</span></label
+                  >
+                  <div class="input-group input-group-lg shadow-sm">
+                    <span class="input-group-text bg-white border-end-0"
+                      ><i class="bi bi-upc"></i
+                    ></span>
+                    <input
+                      type="text"
+                      id="serialInput"
+                      class="form-control border-start-0 border-end-0"
+                      placeholder="Chờ tín hiệu từ súng quét..."
+                      autocomplete="off"
+                    />
+                    <button
+                      class="btn btn-primary"
+                      type="button"
+                      onclick="addSerialManual()"
+                    >
+                      Thêm mã
+                    </button>
+                  </div>
+                  <small
+                    id="scanErrorMsg"
+                    class="text-danger fw-semibold d-none mt-1"
+                    ><i class="bi bi-exclamation-triangle-fill me-1"></i> Mã này
+                    đã được quét!</small
+                  >
+                </div>
+
+                <h6 class="fw-bold text-secondary mb-2">
+                  <i class="bi bi-list-check me-2"></i>Mã Serial vừa quét (Chưa
+                  lưu): <span id="tempCount" class="badge bg-secondary">0</span>
+                </h6>
+                <div
+                  class="table-responsive border rounded"
+                  style="max-height: 250px; overflow-y: auto"
+                >
+                  <table
+                    class="table table-hover align-middle mb-0 text-center"
+                  >
+                    <thead
+                      class="table-light"
+                      style="position: sticky; top: 0; z-index: 1"
+                    >
+                      <tr>
+                        <th style="width: 10%">STT</th>
+                        <th class="text-start">Mã Serial / IMEI</th>
+                        <th style="width: 15%">Xóa</th>
+                      </tr>
+                    </thead>
+                    <tbody id="scannedSerialsBody">
+                      <tr id="emptyScanRow">
+                        <td colspan="3" class="text-muted py-4">
+                          Chưa có mã nào được quét đợt này.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="modal-footer bg-light">
+                <button
+                  type="button"
+                  class="btn btn-secondary px-4"
+                  data-bs-dismiss="modal"
+                >
+                  Thoát
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-success px-4 fw-bold"
+                  id="btnSaveSerials"
+                  onclick="submitSerials()"
+                >
+                  <i class="bi bi-cloud-arrow-up-fill me-1"></i> Lưu vào Hệ
+                  thống
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal xem chi tiết lô hàng -->
+        <div
+          class="modal fade"
+          id="batchDetailModal"
+          tabindex="-1"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header bg-light">
+                <h5
+                  class="modal-title text-primary fw-bold"
+                  id="batchDetailModalLabel"
+                >
+                  <i class="bi bi-info-circle me-2"></i>Chi tiết Lô hàng nhập
+                  kho
+                </h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body p-4">
+                <div class="row mb-4 border-bottom pb-3">
+                  <div class="col-md-6">
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Mã Lô Hàng:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-bold text-primary"
+                        id="detailBatchCode"
+                      ></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Sản Phẩm:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-bold text-dark text-truncate"
+                        id="detailBatchProduct"
+                      ></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Kho / Kệ:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-semibold text-secondary"
+                        id="detailBatchLocation"
+                      ></div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Ngày Nhập:
+                      </div>
+                      <div
+                        class="col-sm-7 text-dark"
+                        id="detailBatchDate"
+                      ></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Nguồn Đơn:
+                      </div>
+                      <div class="col-sm-7" id="detailBatchPo"></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Giá Lô Nhập:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-bold text-danger"
+                        id="detailBatchPrice"
+                      ></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Có thể bán / Tồn:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-bold text-dark"
+                        id="detailBatchQty"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                <h6 class="fw-bold text-secondary mb-3">
+                  <i class="bi bi-list-check me-2"></i>Danh sách mã Serial /
+                  IMEI đã được nạp
+                </h6>
+                <div
+                  class="table-responsive border rounded"
+                  style="max-height: 280px; overflow-y: auto"
+                >
+                  <table
+                    class="table table-striped table-hover align-middle mb-0 text-center"
+                    style="font-size: 0.9rem"
+                  >
+                    <thead
+                      class="table-light"
+                      style="position: sticky; top: 0; z-index: 1"
+                    >
+                      <tr>
+                        <th style="width: 15%">STT</th>
+                        <th class="text-start">
+                          Mã Định Danh (Serial Number / IMEI)
+                        </th>
+                        <th>Trạng Thái Máy</th>
+                      </tr>
+                    </thead>
+                    <tbody id="detailSerialsBody">
+                      <tr>
+                        <td colspan="3" class="text-muted py-4">
+                          Đang tải dữ liệu từ máy chủ...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="modal-footer bg-light">
+                <button
+                  type="button"
+                  class="btn btn-secondary px-4"
+                  data-bs-dismiss="modal"
+                >
+                  Đóng cửa sổ
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav
+          th:if="${totalPages > 1}"
+          aria-label="Page navigation"
+          class="mt-4"
+        >
+          <ul class="pagination justify-content-center pagination-sm">
+            <li
+              class="page-item"
+              th:classappend="${currentPage == 1} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/batches/view(page=${currentPage - 1}, keyword=${keyword})}"
+                >Trước</a
+              >
+            </li>
+            <li
+              class="page-item"
+              th:each="i : ${#numbers.sequence(1, totalPages)}"
+              th:classappend="${currentPage == i} ? 'active'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/batches/view(page=${i}, keyword=${keyword})}"
+                th:text="${i}"
+              ></a>
+            </li>
+            <li
+              class="page-item"
+              th:classappend="${currentPage == totalPages} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/batches/view(page=${currentPage + 1}, keyword=${keyword})}"
+                >Sau</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </main>
+    </div>
+
+    <div class="modal fade" id="putawayModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-box-seam me-2"></i>Điều phối Lô hàng lên Kệ
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="mb-3 fs-6">
+              Đang điều phối lô hàng:
+              <strong id="putawayBatchCode" class="text-primary"></strong><br />
+              Kho lưu trữ chỉ định:
+              <strong id="putawayWhName" class="text-secondary"></strong>
+            </div>
+
+            <div
+              id="putawayErrorMsg"
+              class="alert alert-danger d-none"
+              style="font-size: 0.9rem"
+            ></div>
+
+            <div class="mb-2">
+              <label class="form-label fw-bold"
+                >Quét mã vạch dán trên Kệ
+                <span class="text-danger">*</span></label
+              >
+              <div class="input-group input-group-lg shadow-sm">
+                <span class="input-group-text bg-white border-end-0"
+                  ><i class="bi bi-upc-scan"></i
+                ></span>
+                <input
+                  type="text"
+                  id="locationCodeInput"
+                  class="form-control border-start-0"
+                  placeholder="Nhập/quét mã kệ tại đây ..."
+                  autocomplete="off"
+                />
+              </div>
+              <small class="text-muted mt-2 d-block"
+                ><i class="bi bi-info-circle me-1"></i>Hệ thống tự nhận diện khi
+                súng quét bắn lệnh Enter.</small
+              >
+            </div>
+            <input type="hidden" id="putawayBatchId" />
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              class="btn btn-warning fw-bold text-dark"
+              onclick="submitPutaway()"
+            >
+              <i class="bi bi-check-circle-fill me-1"></i> Xác nhận vị trí
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+    <script th:src="@{/js/batch.js}"></script>
+  </body>
+</html>

@@ -15,7 +15,7 @@ public class Supplier {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @Column(nullable = false)
     private String name;
@@ -37,7 +37,7 @@ public class Supplier {
     private BigDecimal supplierPayable;
 
     @Column(name = "reliability_score")
-    private Integer reliabilityScore;
+    private Integer reliabilityScore = 100;
 
     @Column(name = "failed_delivery_count")
     private Integer failedDeliveryCount;

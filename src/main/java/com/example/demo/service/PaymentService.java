@@ -29,14 +29,14 @@ public class PaymentService {
 
         // 2. Tạo giao dịch lịch sử thanh toán mới
         PaymentTransaction transaction = new PaymentTransaction();
-        transaction.setPurchaseOrder(po);
+        transaction.setOrderHeader(po);
         transaction.setAmount(formDTO.getAmount());
         transaction.setPaymentMethod(formDTO.getPaymentMethod());
         transaction.setReferenceCode(formDTO.getReferenceCode());
         transaction.setNote(formDTO.getNote());
         transaction.setPaymentDate(LocalDateTime.now());
 
-        // --- XỬ LÝ LƯU FILE ẢNH BỞI XUỐNG Ổ CỨNG ---
+        // lưu ảnh biên lai
         MultipartFile imageFile = formDTO.getReceiptImage();
         if (imageFile != null && !imageFile.isEmpty()) {
             String imageUrl = saveReceiptImage(imageFile);
@@ -45,12 +45,12 @@ public class PaymentService {
 
         paymentTransactionRepository.save(transaction);
 
-        // 3. Cập nhật số tiền đã trả cho Đơn hàng
+        // Cập nhật số tiền đã trả cho Đơn hàng
         BigDecimal newPaidAmount = (po.getPaidAmount() != null ? po.getPaidAmount() : BigDecimal.ZERO)
                 .add(formDTO.getAmount());
         po.setPaidAmount(newPaidAmount);
 
-        // 4. Cập nhật Trạng thái thanh toán (Logic: So sánh Đã trả và Tổng phải trả)
+        // Cập nhật Trạng thái thanh toán (Logic: So sánh Đã trả và Tổng phải trả)
         if (newPaidAmount.compareTo(po.getTotalPurchaseAmount()) >= 0) {
             po.setPaymentStatus(PaymentStatus.PAID);
         } else {

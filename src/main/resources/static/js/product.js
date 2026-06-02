@@ -35,18 +35,30 @@ function loadChildCategories() {
 
 // modal chi tiết sản phẩm
 function openDetailModal(row) {
-    // 1. Lấy dữ liệu từ các thẻ data-* và đổ vào giao diện Modal
+    // 1. Lấy dữ liệu Text
     document.getElementById('detailName').textContent = row.getAttribute('data-name');
     document.getElementById('detailCategory').textContent = row.getAttribute('data-category');
     document.getElementById('detailBrand').textContent = row.getAttribute('data-brand') || 'N/A';
     document.getElementById('detailSku').textContent = row.getAttribute('data-sku');
     document.getElementById('detailBarcode').textContent = row.getAttribute('data-barcode');
     
-    // Xử lý format tiền tệ (thêm dấu chấm phân cách hàng nghìn)
-    let price = parseFloat(row.getAttribute('data-price') || 0);
-    document.getElementById('detailPrice').textContent = price.toLocaleString('vi-VN') + ' VNĐ';
+    // 2. LẤY DỮ LIỆU SỐ BẰNG PARSE FLOAT & TÍNH TOÁN GIÁ
+    let basePrice = parseFloat(row.getAttribute('data-price') || 0);
+    let costPrice = parseFloat(row.getAttribute('data-cost') || 0);
+    let taxRate = parseFloat(row.getAttribute('data-tax') || 0);
     
-    document.getElementById('detailTax').textContent = row.getAttribute('data-tax') + '%';
+    // Tính tiền
+    let vatAmount = basePrice * (taxRate / 100);
+    let finalPrice = basePrice + vatAmount;
+
+    // Đổ lên UI Modal
+    document.getElementById('detailCostPrice').textContent = costPrice.toLocaleString('vi-VN') + ' đ';
+    document.getElementById('detailPrice').textContent = basePrice.toLocaleString('vi-VN') + ' đ';
+    document.getElementById('detailTaxRate').textContent = taxRate + '%';
+    document.getElementById('detailVatAmount').textContent = '+ ' + vatAmount.toLocaleString('vi-VN') + ' đ';
+    document.getElementById('detailFinalPrice').textContent = finalPrice.toLocaleString('vi-VN') + ' đ';
+    
+    // 3. Các thuộc tính khác
     document.getElementById('detailUnit').textContent = row.getAttribute('data-unit');
     document.getElementById('detailWarranty').textContent = row.getAttribute('data-warranty') + ' tháng';
 

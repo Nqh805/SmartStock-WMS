@@ -1,10 +1,12 @@
 package com.example.demo.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +21,7 @@ import com.example.demo.entity.Product.Category;
 import com.example.demo.entity.Product.Product;
 import com.example.demo.entity.Product.ProductStatus;
 import com.example.demo.repository.ImportBatchRepository;
+import com.example.demo.repository.ProductRepository;
 import com.example.demo.service.CategoryService;
 import com.example.demo.service.ProductService;
 import org.springframework.ui.Model;
@@ -35,6 +38,9 @@ public class ProductController {
 
     @Autowired
     private ImportBatchRepository importBatchRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     // API sinh barcode
     @GetMapping("/generate-barcode")
@@ -100,7 +106,7 @@ public class ProductController {
         return "product_list";
     }
 
-    // 1. API HIỂN THỊ FORM THÊM SẢN PHẨM (MỞ LẦN ĐẦU)
+    // 1. API HIỂN THỊ FORM THÊM SẢN PHẨM (MỞ LẦN ĐẦU) - load data lên các dropdown
     @GetMapping("/add")
     public String showAddForm(Model model) {
         model.addAttribute("parentCategories", categoryService.getAllParentCategories());
@@ -216,5 +222,18 @@ public class ProductController {
             redirectAttributes.addFlashAttribute("errorMessage", "Không thể xóa sản phẩm: " + e.getMessage());
         }
         return "redirect:/products/view";
+    }
+
+    // API trả về giá nhập mới nhất của sản phẩm dựa trên ID
+    @GetMapping("/{id}/latest-import-price")
+    public ResponseEntity<BigDecimal> getLatestImportPrice(@PathVariable Long id) {
+        return productRepository.findById(id)
+                .map(product -> {
+                    // Nếu chưa từng nhập hàng (standardCost = null), trả về giá trị 0
+                    BigDecimal latestPrice = product.getStandardCost() != null ? product.getStandardCost()
+                            : BigDecimal.ZERO;
+                    return ResponseEntity.ok(latestPrice);
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }

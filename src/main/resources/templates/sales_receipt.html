@@ -1,0 +1,212 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hóa Đơn Bán Hàng - [[${order.code}]]</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Times New Roman", serif;
+        background-color: #525659;
+        color: #000;
+      }
+      .print-container {
+        max-width: 80mm; /* Chuẩn khổ giấy in nhiệt K80 (80mm) thường dùng ở máy POS */
+        margin: 20px auto;
+        background-color: #fff;
+        padding: 15px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        font-size: 13px; /* Chữ nhỏ để vừa khổ in nhiệt */
+      }
+      /* Nếu bác muốn in khổ A4/A5 thì đổi max-width ở trên thành 210mm và font-size thành 15px nhé */
+
+      .store-title {
+        font-size: 18px;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+      }
+      .receipt-title {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        margin: 15px 0 10px 0;
+      }
+
+      table.bill-table {
+        width: 100%;
+        margin-bottom: 15px;
+      }
+      table.bill-table th {
+        border-bottom: 1px dashed #000;
+        padding-bottom: 5px;
+      }
+      table.bill-table td {
+        padding: 5px 0;
+        vertical-align: top;
+      }
+      table.bill-table tr {
+        border-bottom: 1px dashed #ccc;
+      }
+      table.bill-table tr:last-child {
+        border-bottom: 1px dashed #000;
+      }
+
+      .summary-box {
+        width: 100%;
+        margin-top: 10px;
+      }
+      .summary-box td {
+        padding: 3px 0;
+      }
+      .summary-total {
+        font-weight: bold;
+        font-size: 15px;
+      }
+
+      @media print {
+        body {
+          background-color: #fff;
+          margin: 0;
+        }
+        .print-container {
+          margin: 0;
+          padding: 0;
+          box-shadow: none;
+          width: 100%;
+          max-width: 100%;
+        }
+        .no-print {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="text-center my-3 no-print">
+      <button class="btn btn-primary px-4 shadow" onclick="window.print()">
+        <i class="bi bi-printer"></i> In Hóa Đơn
+      </button>
+      <button
+        class="btn btn-secondary px-4 shadow ms-2"
+        onclick="window.close()"
+      >
+        Đóng tab
+      </button>
+    </div>
+
+    <div class="print-container">
+      <div class="store-title">ĐIỆN THOẠI PRO-TECH</div>
+      <div class="text-center">Số 1, Đường Công Nghệ, Quận 1</div>
+      <div class="text-center">Hotline: 1900 9999</div>
+
+      <div class="receipt-title">HÓA ĐƠN BÁN HÀNG</div>
+
+      <div class="mb-3">
+        <div><strong>Mã HĐ:</strong> [[${order.code}]]</div>
+        <div>
+          <strong>Ngày:</strong> [[${order.createdAt != null ?
+          #temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm') : ''}]]
+        </div>
+        <div>
+          <strong>Khách hàng:</strong> [[${order.customer != null ?
+          order.customer.name : 'Khách lẻ vãng lai'}]]
+        </div>
+        <div th:if="${order.customer != null}">
+          <strong>SĐT:</strong> [[${order.customer.phone}]]
+        </div>
+        <div>
+          <strong>Trạng thái:</strong>
+          <span th:if="${order.paymentStatus.name() == 'PAID'}"
+            >Đã thanh toán</span
+          >
+          <span th:if="${order.paymentStatus.name() == 'PARTIAL'}"
+            >Thanh toán 1 phần</span
+          >
+          <span th:if="${order.paymentStatus.name() == 'UNPAID'}"
+            >Chưa thanh toán</span
+          >
+        </div>
+      </div>
+
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th class="text-start" style="width: 40%">Tên SP</th>
+            <th class="text-center" style="width: 15%">SL</th>
+            <th class="text-end" style="width: 45%">Thành tiền</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="detail : ${order.orderDetails}">
+            <td class="text-start">
+              [[${detail.product != null ? detail.product.name : 'Sản phẩm'}]]
+              <div
+                th:if="${detail.discountAmount != null and detail.discountAmount > 0}"
+                style="font-size: 11px; font-style: italic"
+              >
+                (CK: -[[${#numbers.formatDecimal(detail.discountAmount, 0,
+                'COMMA', 0, 'POINT')}]] đ)
+              </div>
+            </td>
+            <td class="text-center">[[${detail.quantity}]]</td>
+            <td class="text-end fw-bold">
+              <th-block
+                th:with="lineTotal=${(detail.unitPrice * detail.quantity) - (detail.discountAmount != null ? detail.discountAmount : 0)}"
+              >
+                [[${#numbers.formatDecimal(lineTotal, 0, 'COMMA', 0, 'POINT')}]]
+                đ
+              </th-block>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table class="summary-box">
+        <tr>
+          <td class="text-start">Cộng tiền hàng:</td>
+          <td class="text-end fw-bold">
+            [[${order.totalSalesAmount != null ?
+            #numbers.formatDecimal(order.totalSalesAmount, 0, 'COMMA', 0,
+            'POINT') : 0}]] đ
+          </td>
+        </tr>
+        <tr>
+          <td class="text-start">Khách đã trả:</td>
+          <td class="text-end">
+            [[${order.paidAmount != null ?
+            #numbers.formatDecimal(order.paidAmount, 0, 'COMMA', 0, 'POINT') :
+            0}]] đ
+          </td>
+        </tr>
+        <tr style="border-top: 1px solid #000">
+          <td class="text-start summary-total">CÒN NỢ:</td>
+          <td class="text-end summary-total text-danger">
+            <th-block
+              th:with="debt=${(order.totalSalesAmount != null ? order.totalSalesAmount : 0) - (order.paidAmount != null ? order.paidAmount : 0)}"
+            >
+              [[${#numbers.formatDecimal(debt > 0 ? debt : 0, 0, 'COMMA', 0,
+              'POINT')}]] đ
+            </th-block>
+          </td>
+        </tr>
+      </table>
+
+      <div class="text-center mt-4" style="font-size: 12px; font-style: italic">
+        Cảm ơn Quý Khách và Hẹn gặp lại!<br />
+        Hàng mua rồi miễn đổi trả (ngoại trừ lỗi NSX).
+      </div>
+    </div>
+
+    <script>
+      window.onload = function () {
+        window.print();
+      };
+    </script>
+  </body>
+</html>

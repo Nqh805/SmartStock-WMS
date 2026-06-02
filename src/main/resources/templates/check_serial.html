@@ -1,0 +1,538 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:replace="~{fragments :: html_head}"></head>
+  <body class="rma-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div class="mb-4">
+          <h2>
+            <i class="bi bi-magnifying-glass-barcode me-2 text-warning"></i>Tra
+            cứu Lịch sử Serial / IMEI
+          </h2>
+          <p class="text-muted">
+            Quét hoặc nhập mã định danh để truy vết thông tin sản phẩm, lô hàng
+            và hóa đơn nhập gốc.
+          </p>
+        </div>
+        <hr />
+
+        <div class="card shadow-sm mb-4 border-0">
+          <div class="card-body p-4 bg-white rounded">
+            <form
+              th:action="@{/rma/check-serial}"
+              method="get"
+              class="row g-2 justify-content-center"
+            >
+              <div class="col-md-8 col-lg-6">
+                <div class="input-group input-group-lg shadow-sm">
+                  <span class="input-group-text bg-white"
+                    ><i class="bi bi-upc-scan text-muted"></i
+                  ></span>
+                  <input
+                    type="text"
+                    name="serial"
+                    class="form-control border-start-0"
+                    placeholder="Đặt con trỏ chuột vào đây và bóp cò súng quét..."
+                    th:value="${searchKeyword}"
+                    autofocus
+                    required
+                    autocomplete="off"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-warning px-4 fw-bold text-dark"
+                  >
+                    <i class="bi bi-search me-1"></i> Tra cứu máy
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div
+          th:if="${notFound}"
+          class="alert alert-danger d-flex align-items-center p-4 shadow-sm border-0"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill fs-3 me-3"></i>
+          <div>
+            <h5 class="alert-heading fw-bold mb-1">Mã không tồn tại!</h5>
+            <span
+              >Hệ thống không tìm thấy bất kỳ dữ liệu nào trùng khớp với mã
+              Serial <code>[[${searchKeyword}]]</code>. Vui lòng kiểm tra lại
+              tem dán sản phẩm!</span
+            >
+          </div>
+        </div>
+
+        <div th:if="${item != null}">
+          <div
+            class="d-flex align-items-center mb-3 p-3 bg-white border rounded shadow-sm justify-content-between"
+          >
+            <div class="d-flex align-items-center">
+              <span class="text-muted me-2">Mã cấu hình thiết bị:</span>
+              <span class="font-monospace fw-bold fs-5 text-primary"
+                >[[${item.serialNumber}]]</span
+              >
+            </div>
+            <div>
+              <span class="me-2 text-muted">Trạng thái máy hiện tại:</span>
+              <th-block th:switch="${item.status?.name()}">
+                <span
+                  th:case="'IN_STOCK'"
+                  class="badge bg-success fs-6 border px-3"
+                  ><i class="bi bi-box me-1"></i> Đang Trong Kho</span
+                >
+                <span
+                  th:case="'SOLD'"
+                  class="badge bg-info text-dark fs-6 border px-3"
+                  ><i class="bi bi-bag-check me-1"></i> Đã Xuất Bán</span
+                >
+                <span
+                  th:case="'DEFECTIVE'"
+                  class="badge bg-danger fs-6 border px-3"
+                  ><i class="bi bi-bug me-1"></i> Hàng Lỗi/Hỏng</span
+                >
+                <span
+                  th:case="'RETURNED'"
+                  class="badge bg-warning text-dark fs-6 border px-3"
+                  ><i class="bi bi-arrow-counterclockwise me-1"></i> Đổi Trả
+                  (RMA)</span
+                >
+                <span th:case="*" class="badge bg-secondary fs-6 border px-3"
+                  >Trong Kho</span
+                >
+              </th-block>
+            </div>
+          </div>
+          <div
+            class="d-flex justify-content-end mb-4"
+            th:if="${item.status?.name() == 'SOLD'}"
+          >
+            <a
+              th:href="@{/rma/warranties/add(serial=${item.serialNumber})}"
+              class="btn btn-warning fw-bold text-dark shadow-sm"
+            >
+              <i class="bi bi-tools me-1"></i> Lập phiếu Bảo hành / Đổi trả cho
+              thiết bị này
+            </a>
+          </div>
+
+          <div
+            class="alert alert-secondary d-flex align-items-center mb-4 shadow-sm border-0"
+            th:unless="${item.status?.name() == 'SOLD'}"
+          >
+            <i class="bi bi-shield-lock-fill text-muted fs-4 me-3"></i>
+            <div>
+              <strong class="d-block text-dark"
+                >Thiết bị không đủ điều kiện lập phiếu RMA</strong
+              >
+              <span class="text-muted" style="font-size: 0.9rem"
+                >Chỉ những thiết bị có trạng thái "Đã Xuất Bán" mới được phép
+                tiếp nhận Bảo hành / Đổi trả.</span
+              >
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm h-100 bg-white">
+                <div
+                  class="card-header bg-primary bg-opacity-10 text-primary fw-bold py-3 border-0"
+                >
+                  <i class="bi bi-box-seam me-2"></i>1. Hồ sơ Sản phẩm danh mục
+                </div>
+                <div class="card-body p-4">
+                  <table class="table table-borderless align-middle mb-0">
+                    <tbody>
+                      <tr>
+                        <td
+                          class="text-muted fw-semibold py-2"
+                          style="width: 35%"
+                        >
+                          Tên sản phẩm:
+                        </td>
+                        <td
+                          class="fw-bold text-dark py-2"
+                          th:text="${item.product?.name}"
+                        ></td>
+                      </tr>
+                      <tr>
+                        <td class="text-muted fw-semibold py-2">
+                          Mã SKU Code:
+                        </td>
+                        <td class="py-2">
+                          <code class="font-monospace fs-6"
+                            >[[${item.product?.skuCode}]]</code
+                          >
+                        </td>
+                      </tr>
+                      <tr>
+                        <td class="text-muted fw-semibold py-2">
+                          Thương hiệu:
+                        </td>
+                        <td
+                          class="py-2 fw-medium text-secondary"
+                          th:text="${item.product?.brand != null ? item.product.brand : 'Chưa cập nhật'}"
+                        ></td>
+                      </tr>
+                      <tr>
+                        <td class="text-muted fw-semibold py-2">
+                          Đơn vị tính:
+                        </td>
+                        <td class="py-2" th:text="${item.product?.unit}"></td>
+                      </tr>
+                      <tr>
+                        <td class="text-muted fw-semibold py-2">
+                          Hạn bảo hành:
+                        </td>
+                        <td
+                          class="py-2 text-success fw-bold"
+                          th:text="${item.product?.warrantyMonths != null ? item.product.warrantyMonths + ' tháng' : 'Không bảo hành'}"
+                        ></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="card border-0 shadow-sm h-100 bg-white">
+                <div
+                  class="card-header bg-success bg-opacity-10 text-success fw-bold py-3 border-0"
+                >
+                  <i class="bi bi-layer-group me-2"></i>2. Thông tin Lô hàng &
+                  Đơn nhập gốc
+                </div>
+                <div
+                  class="card-body p-4 d-flex flex-column justify-content-between"
+                >
+                  <div class="mb-3">
+                    <h6 class="fw-bold text-secondary border-bottom pb-1">
+                      <i class="bi bi-geo-alt me-1"></i>Định vị Lô Kho hàng
+                    </h6>
+                    <div class="row mb-2">
+                      <div class="col-sm-4 text-muted">Mã lô hàng:</div>
+                      <div class="col-sm-8 fw-bold text-primary">
+                        [[${item.importBatch?.batchCode}]]
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-4 text-muted">Vị trí lưu trữ:</div>
+                      <div class="col-sm-8 fw-semibold text-secondary">
+                        [[${item.importBatch?.wareHouse?.name}]] ➔
+                        <small class="text-dark font-monospace fw-bold"
+                          >[[${item.importBatch?.location != null ? 'Kệ ' +
+                          item.importBatch.location.locationCode : 'Chưa xếp
+                          kệ'}]]</small
+                        >
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-4 text-muted">Ngày nhập kho:</div>
+                      <div
+                        class="col-sm-8"
+                        th:text="${item.importBatch?.importDate != null ? #temporals.format(item.importBatch.importDate, 'dd/MM/yyyy') : 'N/A'}"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h6 class="fw-bold text-secondary border-bottom pb-1">
+                      <i class="bi bi-file-earmark-text me-1"></i>Hóa đơn Đơn
+                      mua gốc (PO)
+                    </h6>
+                    <div class="row mb-2">
+                      <div class="col-sm-4 text-muted">Mã chứng từ:</div>
+                      <div class="col-sm-8">
+                        <span
+                          th:if="${item.importBatch?.purchaseOrder != null}"
+                          class="badge bg-info text-dark fw-bold px-2"
+                          >[[${item.importBatch.purchaseOrder.code}]]</span
+                        >
+                        <span
+                          th:if="${item.importBatch?.purchaseOrder == null}"
+                          class="badge bg-secondary"
+                          >Nhập Lẻ Ngoài Đơn</span
+                        >
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-4 text-muted">Nhà cung cấp:</div>
+                      <div
+                        class="col-sm-8 fw-medium"
+                        th:text="${item.importBatch?.purchaseOrder?.supplier != null ? item.importBatch.purchaseOrder.supplier.name : 'Nhà cung cấp vãng lai'}"
+                      ></div>
+                    </div>
+                    <div class="row mb-1">
+                      <div
+                        class="col-sm-4 text-muted"
+                        title="Giá vốn tịnh đã chia đều trừ chiết khấu"
+                      >
+                        Giá vốn lô nhập:
+                      </div>
+                      <div class="col-sm-8 fw-bold text-danger">
+                        <span
+                          th:if="${item.importBatch?.price != null}"
+                          th:text="${#numbers.formatDecimal(item.importBatch.price, 0, 'COMMA', 0, 'POINT')} + ' đ'"
+                        ></span>
+                        <span
+                          th:if="${item.importBatch?.price == null}"
+                          class="text-muted fw-normal"
+                          >Chưa khai báo giá</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row mt-4">
+              <div class="col-12">
+                <div class="card border-0 shadow-sm bg-white">
+                  <div
+                    class="card-header bg-info bg-opacity-10 text-info-emphasis fw-bold py-3 border-0"
+                  >
+                    <i class="bi bi-cart-check-fill me-2"></i>3. Thông tin Đơn
+                    xuất bán & Khách hàng
+                  </div>
+
+                  <div class="card-body p-4">
+                    <div th:if="${item.salesOrder != null}" class="row g-4">
+                      <div class="col-md-6 border-end">
+                        <h6
+                          class="fw-bold text-secondary border-bottom pb-2 mb-3"
+                        >
+                          <i class="bi bi-receipt-cutoff me-1"></i>Hóa đơn bán
+                          hàng (SO)
+                        </h6>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Mã đơn bán:</div>
+                          <div class="col-sm-8 fw-bold text-primary">
+                            <span
+                              class="badge bg-primary-subtle text-primary border border-primary fs-6"
+                              >[[${item.salesOrder.code}]]</span
+                            >
+                          </div>
+                        </div>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Ngày xuất bán:</div>
+                          <div
+                            class="col-sm-8 fw-medium text-dark"
+                            th:text="${item.salesOrder.createdAt != null ? #temporals.format(item.salesOrder.createdAt, 'dd/MM/yyyy HH:mm') : 'N/A'}"
+                          ></div>
+                        </div>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Hạn bảo hành:</div>
+                          <div
+                            class="col-sm-8 fw-bold fs-6"
+                            th:if="${item.salesOrder != null}"
+                            th:classappend="${item.isWarrantyExpired() ? 'text-danger' : 'text-success'}"
+                          >
+                            <i
+                              class="bi"
+                              th:classappend="${item.isWarrantyExpired() ? 'bi-x-circle me-1' : 'bi-check-circle me-1'}"
+                            ></i>
+                            <span
+                              th:text="${item.getWarrantyExpirationDate() != null ? #temporals.format(item.getWarrantyExpirationDate(), 'dd/MM/yyyy HH:mm') : 'N/A'}"
+                            ></span>
+                          </div>
+                        </div>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Trạng thái đơn:</div>
+                          <div class="col-sm-8">
+                            <span
+                              th:if="${item.salesOrder.status?.name() == 'COMPLETED'}"
+                              class="badge bg-success"
+                              >Hoàn tất</span
+                            >
+                            <span
+                              th:if="${item.salesOrder.status?.name() == 'CANCELLED'}"
+                              class="badge bg-danger"
+                              >Đã hủy</span
+                            >
+                            <span
+                              th:if="${item.salesOrder.status?.name() == 'REFUNDED'}"
+                              class="badge bg-warning text-dark"
+                              >Hoàn tiền</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-md-6 ps-4">
+                        <h6
+                          class="fw-bold text-secondary border-bottom pb-2 mb-3"
+                        >
+                          <i class="bi bi-person-badge me-1"></i>Thông tin Khách
+                          hàng
+                        </h6>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Họ và tên:</div>
+                          <div
+                            class="col-sm-8 fw-bold text-dark"
+                            th:text="${item.salesOrder.customer != null ? item.salesOrder.customer.name : 'Khách vãng lai / Mua lẻ'}"
+                          ></div>
+                        </div>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Số điện thoại:</div>
+                          <div
+                            class="col-sm-8 fw-medium"
+                            th:text="${item.salesOrder.customer != null ? item.salesOrder.customer.phone : 'N/A'}"
+                          ></div>
+                        </div>
+                        <div class="row mb-2">
+                          <div class="col-sm-4 text-muted">Địa chỉ KH:</div>
+                          <div
+                            class="col-sm-8"
+                            th:text="${item.salesOrder.customer != null ? item.salesOrder.customer.address : 'Khách mua trực tiếp tại quầy'}"
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      th:if="${item.salesOrder != null and item.isWarrantyExpired()}"
+                      class="alert alert-danger mt-4 mb-0 shadow-sm border-danger border-2 d-flex align-items-center"
+                    >
+                      <i class="bi bi-shield-x fs-1 me-3"></i>
+                      <div>
+                        <h5 class="mb-1 fw-bold text-danger">
+                          TỪ CHỐI TIẾP NHẬN: THIẾT BỊ ĐÃ HẾT HẠN BẢO HÀNH!
+                        </h5>
+                        <p class="mb-0 text-dark">
+                          Thiết bị này đã hết hạn bảo hành theo quy định. Không
+                          thể tạo phiếu RMA diện bảo hành miễn phí. Bạn chỉ có
+                          thể chuyển sang quy trình sửa chữa dịch vụ (tính phí).
+                        </p>
+                      </div>
+                    </div>
+                    <div
+                      th:unless="${item.salesOrder != null}"
+                      class="text-center py-4 text-muted"
+                    >
+                      <i class="bi bi-shop fs-1 d-block mb-2 opacity-50"></i>
+                      <span class="fs-5"
+                        >Thiết bị này chưa được xuất bán (Chưa phát sinh giao
+                        dịch).</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div
+      class="modal fade"
+      id="refundModal"
+      tabindex="-1"
+      aria-hidden="true"
+      th:if="${item != null}"
+    >
+      <div class="modal-dialog">
+        <form th:action="@{/rma/refund}" method="post">
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger text-white">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-arrow-return-left me-2"></i>Thủ tục Trả hàng &
+                Hoàn tiền
+              </h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body p-4">
+              <input
+                type="hidden"
+                name="serialNumber"
+                th:value="${item.serialNumber}"
+              />
+
+              <div class="alert alert-warning border-warning">
+                Đơn giá gốc lúc khách mua:
+                <strong
+                  class="fs-5 ms-1"
+                  th:text="${item.salesOrder != null and item.salesOrder.totalSalesAmount != null ? #numbers.formatDecimal(item.salesOrder.totalSalesAmount / item.salesOrder.orderDetails.size(), 0, 'COMMA', 0, 'POINT') + ' đ' : 'N/A'}"
+                ></strong>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold"
+                  >Tình trạng thu hồi <span class="text-danger">*</span></label
+                >
+                <select
+                  name="isDefective"
+                  class="form-select border-danger"
+                  required
+                >
+                  <option value="false">
+                    Khách đổi ý (Máy còn mới 100%, có thể bán lại)
+                  </option>
+                  <option value="true">
+                    Máy lỗi NSX (Thu hồi chờ mang đi hãng bảo hành)
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold"
+                  >Số tiền cấn trừ/Hoàn lại cho khách
+                  <span class="text-danger">*</span></label
+                >
+                <div class="input-group">
+                  <input
+                    type="number"
+                    name="refundAmount"
+                    class="form-control text-end fw-bold text-danger fs-5"
+                    required
+                    min="0"
+                  />
+                  <span class="input-group-text fw-bold bg-light">VNĐ</span>
+                </div>
+                <small class="text-muted"
+                  >Nhập 0 nếu đổi máy ngang không hoàn tiền.</small
+                >
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label fw-bold">Lý do trả hàng</label>
+                <textarea
+                  name="note"
+                  class="form-control"
+                  rows="2"
+                  placeholder="Ghi rõ lý do thu hồi máy..."
+                ></textarea>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Hủy
+              </button>
+              <button type="submit" class="btn btn-danger fw-bold">
+                <i class="bi bi-check-circle me-1"></i>Xác nhận thu hồi
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+  </body>
+</html>

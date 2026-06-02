@@ -1,4 +1,4 @@
-package com.example.demo.entity.Order;
+package com.example.demo.entity.Product;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-import com.example.demo.entity.Product.Product;
+import com.example.demo.entity.Order.PurchaseOrder;
 import com.example.demo.entity.Warehouse.WareHouse;
 import com.example.demo.entity.Warehouse.WareHouseLocation;
 
@@ -22,14 +22,8 @@ public class ImportBatch {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "name")
-    private String name;
-
     @Column(name = "batch_code", unique = true)
     private String batchCode;
-
-    @Column(name = "manufacturing_date")
-    private LocalDate manufacturingDate;
 
     @Column(name = "quantity_on_hand")
     private Integer quantityOnHand;
@@ -37,11 +31,11 @@ public class ImportBatch {
     @Column(name = "quantity_available")
     private Integer quantityAvailable;
 
-    @Column(name = "unallocated_quantity")
-    private Integer unallocatedQuantity = 0;
+    @Column(name = "import_date")
+    private LocalDate importDate;
 
-    @Column(name = "import_price")
-    private BigDecimal importPrice;
+    @Column(name = "price")
+    private BigDecimal price;
 
     @Column(name = "note")
     private String note;

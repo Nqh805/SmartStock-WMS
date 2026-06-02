@@ -215,6 +215,8 @@ public class ProductService {
     private void updateFields(Product target, Product source) {
         target.setName(source.getName());
         target.setBasePrice(source.getBasePrice());
+        target.setStandardCost(source.getStandardCost());
+        target.setCostPrice(source.getCostPrice());
         target.setUnit(source.getUnit());
         target.setBrand(source.getBrand());
         target.setWarrantyMonths(source.getWarrantyMonths());

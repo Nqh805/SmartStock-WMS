@@ -7,6 +7,7 @@ function openPurchaseDetailModal(row) {
     document.getElementById('detailPoName').textContent = row.getAttribute('data-name');
     document.getElementById('detailPoSupplier').textContent = row.getAttribute('data-supplier');
     document.getElementById('detailPoWarehouse').textContent = row.getAttribute('data-warehouse');
+    document.getElementById('detailPoWarehouseAddress').textContent = row.getAttribute('data-warehouse-address') || 'Chưa cập nhật';
     document.getElementById('detailPoCreated').textContent = row.getAttribute('data-created');
     document.getElementById('detailPoExpected').textContent = row.getAttribute('data-expected');
     document.getElementById('detailPoNote').textContent = row.getAttribute('data-note') || 'Không có ghi chú';
@@ -15,10 +16,17 @@ function openPurchaseDetailModal(row) {
     
     let result = row.getAttribute('data-result');
     let resultHtml = '<span class="text-muted">Chưa kiểm đếm</span>';
-    if (result === 'EARLY') resultHtml = '<span class="badge bg-info">Giao sớm</span>';
-    else if (result === 'LATE') resultHtml = '<span class="badge bg-warning text-dark">Giao trễ</span>';
+    
+    // Bổ sung thêm điều kiện ON_TIME
+    if (result === 'ON_TIME') {
+        resultHtml = '<span class="badge bg-success">Giao đúng hạn</span>';
+    } else if (result === 'EARLY') {
+        resultHtml = '<span class="badge bg-info">Giao sớm</span>';
+    } else if (result === 'LATE') {
+        resultHtml = '<span class="badge bg-warning text-dark">Giao trễ</span>';
+    }
+    
     document.getElementById('detailPoResult').innerHTML = resultHtml;
-
     let amount = parseFloat(row.getAttribute('data-amount') || 0);
     document.getElementById('detailPoAmount').textContent = amount.toLocaleString('vi-VN') + ' đ';
 
@@ -33,6 +41,23 @@ function openPurchaseDetailModal(row) {
         remainingAmountEl.textContent = remaining.toLocaleString('vi-VN') + ' đ';
     }
 
+    // ĐỌC VÀ XỬ LÝ ĐƯỜNG DẪN ẢNH CHỨNG TỪ GIAO HÀNG
+    const documentUrl = row.getAttribute('data-document');
+    const docLink = document.getElementById('detailPoDocumentLink');
+    const noDocSpan = document.getElementById('detailPoNoDocument');
+
+    if (docLink && noDocSpan) {
+        // Kiểm tra xem đơn hàng đã được up ảnh chứng từ hay chưa
+        if (documentUrl && documentUrl !== 'null' && documentUrl.trim() !== '') {
+            docLink.href = documentUrl; 
+            docLink.style.display = 'inline-block';
+            noDocSpan.style.display = 'none'
+        } else {
+            docLink.style.display = 'none'; 
+            noDocSpan.style.display = 'inline';   
+        }
+    }
+
     let paymentStatus = row.getAttribute('data-payment');
     document.getElementById('detailPoPayment').innerHTML = paymentStatus === 'PAID' 
         ? '<span class="badge bg-success-subtle text-success border border-success">Đã thanh toán</span>' 
@@ -45,8 +70,8 @@ function openPurchaseDetailModal(row) {
     switch (deliveryStatus) {
         case 'PENDING': deliveryHtml = '<span class="badge bg-secondary">Chờ xử lý</span>'; break;
         case 'IN_TRANSIT': deliveryHtml = '<span class="badge bg-primary">Đang giao</span>'; break;
-        case 'DELIVERED': deliveryHtml = '<span class="badge bg-success">Đã nhận hàng</span>'; break;
-        case 'FAILED': deliveryHtml = '<span class="badge bg-danger">Thất bại</span>'; break;
+        case 'COMPLETED': deliveryHtml = '<span class="badge bg-success">Đã nhận hàng</span>'; break;
+        case 'CANCELLED': deliveryHtml = '<span class="badge bg-danger">Đã hủy</span>'; break; 
     }
     document.getElementById('detailPoDelivery').innerHTML = deliveryHtml;
 
@@ -71,52 +96,59 @@ function openPurchaseDetailModal(row) {
         }
     }
 
-    // 2. Tạo hiệu ứng xoay Loading trong bảng khi đợi nạp dữ liệu
+    // hiệu ứng Loading trong bảng khi đợi nạp dữ liệu
     let tbody = document.getElementById('detailPoProductsBody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="13" class="text-center py-4">
+            <td colspan="12" class="text-center py-4">
                 <div class="spinner-border text-primary" role="status"></div>
                 <div class="mt-2 text-muted">Đang tải danh sách sản phẩm thực tế...</div>
             </td>
         </tr>`;
 
-    // 3. Kích hoạt bật hiển thị Modal của Bootstrap lên trước
+    // kích hoạt modal
     var myModal = new bootstrap.Modal(document.getElementById('purchaseDetailModal'));
     myModal.show();
 
-    // 4. KHỚP ROUTE: Tạo Form Data để gửi lên `@RequestParam` của Controller
+    // gửi request lấy danh sách sản phẩm
     const params = new URLSearchParams();
     params.append('poId', poId);
 
-    fetch('/purchases/get-order-details', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded' // Định dạng bắt buộc của RequestParam
-        },
-        body: params
+    fetch(`/purchases/get-order-details?poId=${poId}`, {
+        method: 'GET'
     })
     .then(response => {
         if (!response.ok) throw new Error("Lỗi kết nối từ server");
         return response.json();
     })
     .then(data => {
-        tbody.innerHTML = ''; // Clear dòng loading đi
+        tbody.innerHTML = '';
+
+        const putawayBadge = document.getElementById('detailPoPutawayProgress');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-4">Không có sản phẩm nào thuộc đơn hàng này.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-4">Không có sản phẩm nào thuộc đơn hàng này.</td></tr>';
+            if (putawayBadge) putawayBadge.innerHTML = '<i class="bi bi-layers me-1"></i>Tiến độ xếp kệ: 0/0 lô';
             return;
         }
 
-        // 5. Duyệt danh sách DTO lồng nhau (Nested DTO) nhận được từ Java và render
+        let totalBatches = 0;
+        let putawayBatches = 0;
+
+        // Duyệt danh sách DTO lồng nhau (Nested DTO) nhận được từ Java và render
         data.forEach((item, index) => {
+            // THỐNG KÊ LÔ HÀNG ĐÃ CẤT
+            // Chỉ những sản phẩm có nhận hàng (actualQuantity > 0) mới sinh ra Lô
+            if (item.actualQuantity > 0) {
+                totalBatches++;
+                // Nếu số lượng cất vào kệ = số lượng thực nhận -> Đã cất xong lô này
+                if (item.putawayQuantity === item.actualQuantity) {
+                    putawayBatches++;
+                }
+            }
+
             let qtyToCalculate = item.actualQuantity > 0 ? item.actualQuantity : item.quantity;
             let total = (item.price * qtyToCalculate) - item.discount;
-            
-            let putawayColor = item.putawayQuantity === item.actualQuantity && item.actualQuantity > 0 
-                ? "text-success fw-bold" 
-                : (item.putawayQuantity > 0 ? "text-warning fw-bold" : "text-danger");
-
             let tooltipText = item.actualQuantity > 0 ? 'Thành tiền (Thực tế)' : 'Tạm tính (Dựa trên SL đặt)';
 
             let tr = `
@@ -131,7 +163,6 @@ function openPurchaseDetailModal(row) {
                     <td class="text-end">${item.price.toLocaleString('vi-VN')} đ</td>
                     <td>${item.quantity}</td>
                     <td class="text-primary fw-bold">${item.actualQuantity}</td>
-                    <td class="${putawayColor}">${item.putawayQuantity} / ${item.actualQuantity}</td>
                     <td class="text-end text-danger">-${item.discount.toLocaleString('vi-VN')} đ</td>
                     <td class="text-end fw-bold text-success" title="${tooltipText}">
                         ${total.toLocaleString('vi-VN')} đ
@@ -140,19 +171,30 @@ function openPurchaseDetailModal(row) {
             `;
             tbody.innerHTML += tr;
         });
+
+        // CẬP NHẬT BADGE TIẾN ĐỘ LÊN GIAO DIỆN
+        if (putawayBadge) {
+            putawayBadge.innerHTML = `<i class="bi bi-layers me-1"></i>Đã xếp kệ: ${putawayBatches} / ${totalBatches} lô`;
+            if (totalBatches === 0 || putawayBatches === 0) {
+                 putawayBadge.className = 'badge bg-secondary border border-secondary';
+            } else if (putawayBatches < totalBatches) {
+                 putawayBadge.className = 'badge bg-warning text-dark border border-warning';
+            } else {
+                 putawayBadge.className = 'badge bg-success border border-success';
+            }
+        }
     })
     .catch(error => {
         console.error("Lỗi Ajax Fetch:", error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="13" class="text-center text-danger py-4">
+                <td colspan="12" class="text-center text-danger py-4">
                     <i class="bi bi-exclamation-triangle-fill me-2"></i> Không thể tải dữ liệu chi tiết sản phẩm. Vui lòng thử lại.
                 </td>
             </tr>`;
     });
-    // ---------------------------------------------------------
-    // BẮT ĐẦU ĐOẠN JS LẤY LỊCH SỬ THANH TOÁN
-    // ---------------------------------------------------------
+    
+    // payment history start
     let historyBody = document.getElementById('detailPoPaymentHistoryBody');
     
     // Hiển thị loading mờ mờ cho bảng lịch sử
@@ -172,11 +214,11 @@ function openPurchaseDetailModal(row) {
             return;
         }
 
-        // Lặp dữ liệu vẽ ra bảng
+        // bảng lịch sử giao dịch
         data.forEach(item => {
             // 1. Format lại ngày tháng từ chuỗi Java (VD: 2026-05-18T10:30:00)
             let dateObj = new Date(item.paymentDate);
-            let dateStr = dateObj.toLocaleDateString('vi-VN') + ' ' + dateObj.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+            let dateStr = dateObj.toLocaleDateString('vi-VN') + ' ' + dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             // 2. Format Badge Phương thức
             let methodBadge = '';
@@ -189,7 +231,6 @@ function openPurchaseDetailModal(row) {
                 ? `<a href="${item.receiptImageUrl}" target="_blank" class="btn btn-sm btn-outline-primary" title="Xem chứng từ"><i class="bi bi-eye"></i></a>`
                 : '<span class="text-muted">-</span>';
 
-            // 4. Lắp ráp HTML
             let tr = `
                 <tr class="align-middle text-center">
                     <td class="text-muted">${dateStr}</td>
@@ -207,9 +248,7 @@ function openPurchaseDetailModal(row) {
         console.error("Lỗi Fetch Lịch sử:", error);
         historyBody.innerHTML = '<tr><td colspan="6" class="text-danger py-3 text-center"><i class="bi bi-exclamation-triangle me-1"></i> Không thể tải dữ liệu.</td></tr>';
     });
-    // ---------------------------------------------------------
-    // KẾT THÚC ĐOẠN JS LẤY LỊCH SỬ THANH TOÁN
-    // ---------------------------------------------------------
+    // payment history end
 }
 // Popup Modal nhan hang
 function openReceiptModal(row) {
@@ -218,7 +257,7 @@ function openReceiptModal(row) {
     const poSupplier = row.getAttribute('data-supplier');
     const poWarehouse = row.getAttribute('data-warehouse');
 
-    //validate ngày nhận hàng thực tế 
+    //làm mờ các ngày dã tạo và ngày dự kiến
     const createdDateStr = row.getAttribute('data-created'); // Ví dụ: "15/05/2026 16:48:43"
     
     if (createdDateStr) {
@@ -255,16 +294,9 @@ function openReceiptModal(row) {
     var rModal = new bootstrap.Modal(document.getElementById('receiptModal'));
     rModal.show();
 
-    // 4. KHỚP ROUTE: Gọi API lấy chi tiết đơn hàng (Giống openPurchaseDetailModal)
-    const params = new URLSearchParams();
-    params.append('poId', poId);
-
-    fetch('/purchases/get-order-details', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: params
+    // 4. Gọi API lấy chi tiết đơn hiển thị danh sách sản phẩm
+    fetch(`/purchases/get-order-details?poId=${poId}`, {
+        method: 'GET'
     })
     .then(response => {
         if (!response.ok) throw new Error("Lỗi kết nối từ server");
@@ -292,7 +324,7 @@ function openReceiptModal(row) {
                         <input type="number" 
                                name="actualQuantities[${item.id}]" 
                                class="form-control form-control-sm text-center fw-semibold border-warning" 
-                               min="0" 
+                               min="1" 
                                max="${item.quantity}" 
                                value="${item.quantity}" 
                                required />
@@ -321,8 +353,8 @@ function handlePaymentClick(btn) {
         alert('CẢNH BÁO: Không thể thanh toán!\n\nĐơn hàng này chưa được nhận thực tế tại kho.');
         return; 
     }
-    else if (deliveryStatus === 'FAILED') {
-        alert('CẢNH BÁO: Không thể thanh toán!\n\nĐơn hàng này đã bị đánh dấu giao thất bại. Vui lòng kiểm tra lại thông tin đơn hàng.');
+    else if (deliveryStatus === 'CANCELLED') {
+        alert('CẢNH BÁO: Không thể thanh toán!\n\nĐơn hàng này đã bị hủy. Vui lòng kiểm tra lại thông tin đơn hàng.');
         return; 
     }
 
@@ -374,13 +406,125 @@ function handleDeleteClick(btn) {
         myModal.show();
     }
 }
-// Khởi tạo các thành phần DOM khi load trang hoàn tất
+// báo fail đơn hàng
+function openFailModal(row) {
+    // Lấy thông tin từ dòng được click tải vào modal
+    const id = row.getAttribute('data-id');
+    const code = row.getAttribute('data-code');
+    
+    document.getElementById('failPoCode').textContent = code;
+    
+    document.getElementById('failForm').action = '/purchases/fail/' + id;
+    
+    document.querySelector('#failForm textarea[name="failReason"]').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('failModal'));
+    modal.show();
+}
+// Biến cờ đánh dấu xem có đơn nào được duyệt chưa để load lại bảng chính
+let hasApprovedAnyOrder = false;
+
+// Hàm AJAX duyệt đơn hàng
+function approveOrderAjax(poId) {
+    if (!confirm("Bạn có chắc chắn muốn duyệt đơn hàng này? Hàng sẽ được chuyển sang trạng thái Đang giao tới kho.")) {
+        return;
+    }
+
+    fetch(`/purchases/approve/${poId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Duyệt đơn thất bại!");
+        return response.text();
+    })
+    .then(msg => {
+        // 1. Xóa dòng chứa đơn hàng vừa duyệt khỏi Modal bằng hiệu ứng mờ dần
+        const row = document.getElementById(`pending-row-${poId}`);
+        if (row) {
+            row.style.transition = "opacity 0.3s ease";
+            row.style.opacity = 0;
+            setTimeout(() => row.remove(), 300);
+        }
+
+        // 2. Cập nhật lại số đếm trên Badge (nút vàng ngoài màn hình)
+        const badge = document.getElementById('pendingBadge');
+        if (badge) {
+            let currentCount = parseInt(badge.textContent);
+            if (currentCount > 1) {
+                badge.textContent = currentCount - 1;
+            } else {
+                // Nếu = 0 thì ẩn badge đi và show chữ "Không còn đơn" trong bảng
+                badge.remove();
+                document.getElementById('pendingOrdersBody').innerHTML = `
+                  <tr id="noPendingRow">
+                    <td colspan="4" class="text-muted py-5">
+                      <i class="bi bi-emoji-smile fs-2 d-block mb-2"></i>Tuyệt vời! Không còn đơn hàng nào chờ duyệt.
+                    </td>
+                  </tr>`;
+            }
+        }
+
+        // Đánh dấu cờ là đã có thay đổi dữ liệu
+        hasApprovedAnyOrder = true;
+    })
+    .catch(error => {
+        alert(error);
+    });
+}
+
+// Hàm AJAX từ chối duyệt đơn hàng
+function rejectOrderAjax(poId) {
+    if (!confirm("Bạn có chắc chắn muốn TỪ CHỐI đơn hàng này? Hệ thống sẽ chuyển trạng thái đơn thành ĐÃ HỦY.")) {
+        return;
+    }
+
+    fetch(`/purchases/reject/${poId}`, {
+        method: 'POST'
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Từ chối đơn thất bại!");
+        return response.text();
+    })
+    .then(msg => {
+        // 1. Xóa dòng chứa đơn hàng vừa từ chối khỏi Modal
+        const row = document.getElementById(`pending-row-${poId}`);
+        if (row) {
+            row.style.transition = "opacity 0.3s ease";
+            row.style.opacity = 0;
+            setTimeout(() => row.remove(), 300);
+        }
+
+        // 2. Cập nhật lại số đếm trên Badge (nút màu vàng ngoài màn hình)
+        const badge = document.getElementById('pendingBadge');
+        if (badge) {
+            let currentCount = parseInt(badge.textContent);
+            if (currentCount > 1) {
+                badge.textContent = currentCount - 1;
+            } else {
+                badge.remove();
+                document.getElementById('pendingOrdersBody').innerHTML = `
+                  <tr id="noPendingRow">
+                    <td colspan="4" class="text-muted py-5">
+                      <i class="bi bi-emoji-smile fs-2 d-block mb-2"></i>Tuyệt vời! Không còn đơn hàng nào chờ duyệt.
+                    </td>
+                  </tr>`;
+            }
+        }
+
+        // 3. Đánh dấu cờ để load lại bảng dữ liệu chính khi đóng modal
+        hasApprovedAnyOrder = true; 
+    })
+    .catch(error => {
+        alert(error);
+    });
+}
+// Khởi tạo tất cả các thành phần DOM khi load trang hoàn tất
 document.addEventListener("DOMContentLoaded", function () {
-    // Kích hoạt Tooltip
+    
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].map((tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl));
 
-    // Truyền ID vào form xác nhận xóa
+    // 2. Lắng nghe sự kiện mở Modal Xóa -> Truyền ID vào form xác nhận xóa
     const deleteModal = document.getElementById("deleteModal");
     if (deleteModal) {
         deleteModal.addEventListener("show.bs.modal", (event) => {
@@ -392,4 +536,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
+
+    // 3. Lắng nghe sự kiện khi đóng Modal Duyệt Đơn
+    const approvalModalEl = document.getElementById('approvalModal');
+    if (approvalModalEl) {
+        approvalModalEl.addEventListener('hidden.bs.modal', function () {
+            if (hasApprovedAnyOrder) {
+                location.reload();
+            }
+        });
+    }
+    
 });

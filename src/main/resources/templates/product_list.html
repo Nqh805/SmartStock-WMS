@@ -10,9 +10,7 @@
 
       <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
         <h2>Danh sách sản phẩm</h2>
-        <p class="text-muted mb-0">
-          Quản lý chi tiết sản phẩm.
-        </p>
+        <p class="text-muted mb-0">Quản lý chi tiết sản phẩm.</p>
         <div class="card mb-4 shadow-sm">
           <div class="card-body">
             <form
@@ -29,7 +27,7 @@
                   name="keyword"
                   id="keyword"
                   class="form-control"
-                  placeholder="Tên sản phẩm, mã SKU hoặc thương hiệu..."
+                  placeholder="Tên sản phẩm, mã SKU, mã vạch hoặc thương hiệu..."
                   th:value="${keyword}"
                 />
               </div>
@@ -132,7 +130,7 @@
           <button
             type="button"
             class="btn-close"
-            data-bs-dismiss="modal"
+            data-bs-dismiss="alert"
             aria-label="Close"
           ></button>
         </div>
@@ -147,7 +145,7 @@
           <button
             type="button"
             class="btn-close"
-            data-bs-dismiss="modal"
+            data-bs-dismiss="alert"
             aria-label="Close"
           ></button>
         </div>
@@ -158,16 +156,36 @@
               <table
                 class="table table-striped table-bordered border-dark border-opacity-25 table-hover mb-0"
               >
-                <thead class="sticky-top bg-white" style="z-index: 1">
+                <thead
+                  class="sticky-top bg-white align-middle text-center"
+                  style="z-index: 1"
+                >
                   <tr>
-                    <th scope="col" class="text-center text-nowrap">STT</th>
-                    <th scope="col">Hình Ảnh</th>
-                    <th scope="col" >Tên Sản Phẩm</th>
-                    <th scope="col">Mã SKU</th>
-                    <th scope="col">Thương hiệu</th>
-                    <th scope="col">Phân Loại</th>
-                    <th scope="col" class="text-nowrap">
-                      Giá Bán
+                    <th scope="col" style="width: 3%" class="text-nowrap">
+                      STT
+                    </th>
+                    <th scope="col" style="width: 6%" class="text-nowrap">
+                      Hình Ảnh
+                    </th>
+                    <th scope="col" style="width: 29%" class="text-nowrap">
+                      Tên Sản Phẩm
+                    </th>
+                    <th scope="col" style="width: 10%" class="text-nowrap">
+                      Mã SKU
+                    </th>
+                    <th scope="col" style="width: 10%" class="text-nowrap">
+                      Thương hiệu
+                    </th>
+                    <th scope="col" style="width: 14%" class="text-nowrap">
+                      Phân Loại
+                    </th>
+                    <th
+                      scope="col"
+                      style="width: 12%"
+                      class="text-nowrap"
+                      title="Đã gồm VAT"
+                    >
+                      Giá Bán (Gồm VAT)
                       <a
                         th:href="@{/products/view(keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy='basePrice', direction=${reverseDirection})}"
                         class="btn btn-xs p-0 ms-1"
@@ -177,113 +195,194 @@
                         ></i>
                       </a>
                     </th>
-                    <th scope="col" class="text-nowrap text-center">Tổng Tồn</th>
-                    <th scope="col">Mô Tả</th>
-                    <th scope="col">Thao Tác</th>
+                    <th scope="col" style="width: 8%" class="text-nowrap">
+                      Tổng Tồn
+                    </th>
+                    <th scope="col" style="width: 8%" class="text-nowrap">
+                      Thao Tác
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  <tr th:each="p, state : ${products}"
-                  style="cursor: pointer;"
-                  title="Click đúp để xem chi tiết"
-                  ondblclick="openDetailModal(this)"
-                  th:data-id="${p.id}"
-                  th:data-name="${p.name}"
-                  th:data-sku="${p.skuCode}"
-                  th:data-barcode="${p.barCode}"
-                  th:data-category="${p.category.parent.name + ' > ' + p.category.name}"
-                  th:data-price="${p.basePrice}"
-                  th:data-qty="${p.totalQuantity != null ? p.totalQuantity : 0}"
-                  th:data-unit="${p.unit}"
-                  th:data-brand="${p.brand}"
-                  th:data-warranty="${p.warrantyMonths}"
-                  th:data-minstock="${p.minStockLevel}"
-                  th:data-tax="${p.taxRate}"
-                  th:data-desc="${p.description}"
-                  th:data-specs="${p.technicalSpecs}"
-                  th:data-img="${p.imgURL}">
-                <td class="text-center align-middle" th:text="${(currentPage - 1) * 10 + state.index + 1}"></td>
-                <td class="align-middle text-center">
-                  <a
-                    th:href="${p.imgURL}"
-                    class="product-gallery"
-                    th:if="${p.imgURL != null && p.imgURL != ''}"
+                  <tr
+                    th:each="p, state : ${products}"
+                    style="cursor: pointer"
+                    title="Click đúp để xem chi tiết"
+                    ondblclick="openDetailModal(this)"
+                    th:data-id="${p.id}"
+                    th:data-name="${p.name}"
+                    th:data-sku="${p.skuCode}"
+                    th:data-barcode="${p.barCode}"
+                    th:data-category="${p.category.parent.name + ' > ' + p.category.name}"
+                    th:data-price="${p.basePrice}"
+                    th:data-cost="${p.costPrice != null ? p.costPrice : 0}"
+                    th:data-qty="${p.totalQuantity != null ? p.totalQuantity : 0}"
+                    th:data-unit="${p.unit}"
+                    th:data-brand="${p.brand}"
+                    th:data-warranty="${p.warrantyMonths}"
+                    th:data-minstock="${p.minStockLevel}"
+                    th:data-tax="${p.taxRate}"
+                    th:data-desc="${p.description}"
+                    th:data-specs="${p.technicalSpecs}"
+                    th:data-img="${p.imgURL}"
                   >
-                    <img
-                      th:src="${p.imgURL}"
-                      id="product-image"
-                      alt="Product Image"
-                      class="img-thumbnail"
-                    />
-                  </a>
-                  <img
-                    src="/asset/images/no-image.png"
-                    id="no-image"
-                    alt="No Image"
-                    th:if="${p.imgURL == null || p.imgURL == ''}"
-                  />
-                </td>
-                <td class="align-middle fw-semibold text-primary" th:text="${p.name}"></td>
-                <td class="align-middle text-nowrap "  th:text="${p.skuCode}"></td>
-                <td class="align-middle text-nowrap" th:text="${p.brand}"></td>
+                    <td
+                      class="text-center align-middle"
+                      th:text="${(currentPage - 1) * 10 + state.index + 1}"
+                    ></td>
 
-                <td class="align-middle" th:text="${p.category.parent.name} + ' > ' + ${p.category.name}"></td>
+                    <td class="align-middle text-center p-1">
+                      <a
+                        th:href="${p.imgURL}"
+                        class="product-gallery"
+                        th:if="${p.imgURL != null && p.imgURL != ''}"
+                      >
+                        <img
+                          th:src="${p.imgURL}"
+                          alt="Product Image"
+                          class="img-thumbnail p-1"
+                          style="width: 45px; height: 45px; object-fit: cover"
+                        />
+                      </a>
+                      <img
+                        src="/asset/images/no-image.png"
+                        alt="No Image"
+                        class="img-thumbnail opacity-50 p-1"
+                        style="width: 45px; height: 45px; object-fit: cover"
+                        th:if="${p.imgURL == null || p.imgURL == ''}"
+                      />
+                    </td>
 
-                <td
-                  class="align-middle text-end text-nowrap fw-semibold text-success"
-                  th:text="${#numbers.formatDecimal(p.basePrice, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'"
-                ></td>
+                    <td class="align-middle" style="max-width: 0">
+                      <div
+                        class="fw-semibold text-primary text-truncate"
+                        th:title="${p.name}"
+                        th:text="${p.name}"
+                      ></div>
+                      <small
+                        class="text-muted d-block text-truncate"
+                        th:title="${p.description}"
+                        th:text="${p.description}"
+                      ></small>
+                    </td>
 
-                <td class="text-center align-middle">
-                  <span
-                    th:if="${p.status.name() == 'INACTIVE'}"
-                    class="badge bg-secondary-subtle border border-secondary text-secondary-emphasis"
-                    >Dừng bán</span
-                  >
+                    <td
+                      class="align-middle fw-semibold text-start text-nowrap"
+                      th:text="${p.skuCode}"
+                    ></td>
 
-                  <th:block th:if="${p.status.name() != 'INACTIVE'}">
-                    <span th:if="${p.totalQuantity == null || p.totalQuantity == 0}"
+                    <td class="align-middle" style="max-width: 0">
+                      <div
+                        class="text-truncate"
+                        th:title="${p.brand}"
+                        th:text="${p.brand}"
+                      ></div>
+                    </td>
+
+                    <td class="align-middle" style="max-width: 0">
+                      <div
+                        class="text-truncate"
+                        th:title="${p.category.parent.name} + ' > ' + ${p.category.name}"
+                        th:text="${p.category.parent.name} + ' > ' + ${p.category.name}"
+                      ></div>
+                    </td>
+
+                    <td class="align-middle text-end text-nowrap">
+                      <th:block
+                        th:with="
+                          basePrice=${p.basePrice != null ? p.basePrice : 0}, 
+                          taxRate=${p.taxRate != null ? p.taxRate : 0}, 
+                          vatAmount=${basePrice * taxRate / 100}, 
+                          finalPrice=${basePrice + vatAmount}"
+                      >
+                        <div
+                          class="text-muted mb-1"
+                          style="font-size: 0.85rem"
+                          title="Giá niêm yết chưa VAT"
+                        >
+                          <span
+                            th:text="${#numbers.formatDecimal(basePrice, 0, 'COMMA', 0, 'POINT')}"
+                          ></span>
+                          đ
+                        </div>
+
+                        <div
+                          class="fw-bold text-success"
+                          title="Giá bán cuối cùng đã cộng VAT"
+                          style="font-size: 1.05rem"
+                        >
+                          <span
+                            th:text="${#numbers.formatDecimal(finalPrice, 0, 'COMMA', 0, 'POINT')}"
+                          ></span>
+                          đ
+                        </div>
+                      </th:block>
+                    </td>
+
+                    <td class="text-center align-middle">
+                      <span
+                        th:if="${p.status.name() == 'INACTIVE'}"
+                        class="badge bg-secondary-subtle border border-secondary text-secondary-emphasis"
+                        >Dừng bán</span
+                      >
+                      <th:block th:if="${p.status.name() != 'INACTIVE'}">
+                        <span
+                          th:if="${p.totalQuantity == null || p.totalQuantity == 0}"
                           class="badge bg-danger-subtle border border-danger text-danger-emphasis fs-6 fw-medium"
-                          data-bs-toggle="tooltip" title="Cần nhập thêm hàng!">
-                        <i class="bi bi-exclamation-circle-fill me-1 opacity-75"></i>
-                        <span th:text="0"></span>
-                    </span>
-
-                    <span th:if="${p.totalQuantity != null && p.totalQuantity > 0 && p.totalQuantity <= p.minStockLevel}"
+                          data-bs-toggle="tooltip"
+                          title="Cần nhập thêm hàng!"
+                        >
+                          <i
+                            class="bi bi-exclamation-circle-fill me-1 opacity-75"
+                          ></i
+                          ><span th:text="0"></span>
+                        </span>
+                        <span
+                          th:if="${p.totalQuantity != null && p.totalQuantity > 0 && p.totalQuantity <= p.minStockLevel}"
                           class="badge bg-warning-subtle border border-warning text-warning-emphasis fs-6 fw-medium"
-                          data-bs-toggle="tooltip" title="Sắp hết hàng!">
-                      <i class="bi bi-exclamation-triangle-fill me-1 opacity-75"></i>
-                      <span th:text="${p.totalQuantity}"></span>
-                    </span>
-
-                    <span th:if="${p.totalQuantity != null && p.totalQuantity > p.minStockLevel}"
+                          data-bs-toggle="tooltip"
+                          title="Sắp hết hàng!"
+                        >
+                          <i
+                            class="bi bi-exclamation-triangle-fill me-1 opacity-75"
+                          ></i
+                          ><span th:text="${p.totalQuantity}"></span>
+                        </span>
+                        <span
+                          th:if="${p.totalQuantity != null && p.totalQuantity > p.minStockLevel}"
                           class="badge bg-info-subtle border border-info text-info-emphasis fs-6 fw-medium"
-                          data-bs-toggle="tooltip" title="Đang bán">
-                      <span th:text="${p.totalQuantity}"></span>
-                    </span>
-                  </th:block>
-                </td>
+                          data-bs-toggle="tooltip"
+                          title="Đang bán"
+                        >
+                          <span th:text="${p.totalQuantity}"></span>
+                        </span>
+                      </th:block>
+                    </td>
 
-                <td class="align-middle" th:text="${p.description}"></td>
-                <td class="align-middle text-center text-nowrap">
-                  <a
-                    th:href="@{'/products/edit/' + ${p.id}}"
-                    class="btn btn-sm btn-outline-primary me-1"
-                    >Sửa</a
-                  >
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-outline-danger"
-                    data-bs-toggle="modal"
-                    data-bs-target="#deleteModal"
-                    th:attr="data-product-id=${p.id}"
-                  >
-                    Xóa
-                  </button>
-                </td>
+                    <td class="align-middle text-center text-nowrap">
+                      <a
+                        th:href="@{'/products/edit/' + ${p.id}}"
+                        class="btn btn-sm btn-outline-primary me-1"
+                        ><i class="bi bi-pencil-square"></i
+                      ></a>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#deleteModal"
+                        th:attr="data-product-id=${p.id}"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
                   </tr>
+
                   <tr th:if="${#lists.isEmpty(products)}">
-                    <td colspan="11" class="text-center py-4">Không có sản phẩm nào để hiển thị.</td>
+                    <td colspan="9" class="text-center py-5 text-muted">
+                      <i class="bi bi-box-seam fs-2 d-block mb-2"></i>Không tìm
+                      thấy sản phẩm nào khớp với bộ lọc.
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -296,45 +395,44 @@
           aria-label="Page navigation"
           class="mt-4"
         >
-            <ul class="pagination justify-content-center pagination-sm">
-              <li
-                class="page-item"
-                th:classappend="${currentPage == 1} ? 'disabled'"
+          <ul class="pagination justify-content-center pagination-sm">
+            <li
+              class="page-item"
+              th:classappend="${currentPage == 1} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/products/view(page=${currentPage - 1}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
               >
-                <a
-                  class="page-link"
-                  th:href="@{/products/view(page=${currentPage - 1}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
-                >
-                  <i class="bi bi-chevron-left"></i> Trước
-                </a>
-              </li>
+                <i class="bi bi-chevron-left"></i> Trước
+              </a>
+            </li>
 
-              <li
-                class="page-item"
-                th:each="i : ${#numbers.sequence(1, totalPages)}"
-                th:classappend="${currentPage == i} ? 'active'"
-              >
-                <a
-                  class="page-link"
-                  th:href="@{/products/view(page=${i}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
-                  th:text="${i}"
-                ></a>
-              </li>
+            <li
+              class="page-item"
+              th:each="i : ${#numbers.sequence(1, totalPages)}"
+              th:classappend="${currentPage == i} ? 'active'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/products/view(page=${i}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
+                th:text="${i}"
+              ></a>
+            </li>
 
-              <li
-                class="page-item"
-                th:classappend="${currentPage == totalPages} ? 'disabled'"
+            <li
+              class="page-item"
+              th:classappend="${currentPage == totalPages} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/products/view(page=${currentPage + 1}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
               >
-                <a
-                  class="page-link"
-                  th:href="@{/products/view(page=${currentPage + 1}, keyword=${keyword}, parentId=${parentId}, childId=${childId}, minPrice=${minPrice}, maxPrice=${maxPrice}, sortBy=${sortBy}, direction=${direction})}"
-                >
-                  Sau <i class="bi bi-chevron-right"></i>
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
+                Sau <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
       </main>
     </div>
 
@@ -376,24 +474,41 @@
       </div>
     </div>
 
-    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div
+      class="modal fade"
+      id="detailModal"
+      tabindex="-1"
+      aria-labelledby="detailModalLabel"
+      aria-hidden="true"
+    >
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header bg-light">
             <h5 class="modal-title text-primary fw-bold" id="detailModalLabel">
               <i class="bi bi-info-circle me-2"></i>Chi tiết sản phẩm
             </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body">
             <div class="row">
               <div class="col-md-4 text-center mb-3">
-                <img id="detailImg" src="" alt="Product Image" class="img-fluid rounded border shadow-sm" style="max-height: 250px; object-fit: contain;">
+                <img
+                  id="detailImg"
+                  src=""
+                  alt="Product Image"
+                  class="img-fluid rounded border shadow-sm"
+                  style="max-height: 250px; object-fit: contain"
+                />
               </div>
-              
+
               <div class="col-md-8">
                 <h4 id="detailName" class="mb-3 text-dark fw-bold"></h4>
-                
+
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted">Ngành hàng:</div>
                   <div class="col-sm-8 fw-semibold" id="detailCategory"></div>
@@ -410,13 +525,52 @@
                   <div class="col-sm-4 text-muted">Mã vạch (EAN):</div>
                   <div class="col-sm-8" id="detailBarcode"></div>
                 </div>
-                <div class="row mb-2">
-                  <div class="col-sm-4 text-muted">Giá bán (chưa VAT):</div>
-                  <div class="col-sm-8 text-success fw-bold" id="detailPrice"></div>
-                </div>
-                <div class="row mb-2">
-                  <div class="col-sm-4 text-muted">Thuế suất VAT:</div>
-                  <div class="col-sm-8" id="detailTax"></div>
+                <div class="p-3 bg-light border rounded mb-3">
+                  <div class="row mb-2 border-bottom pb-2">
+                    <div class="col-sm-5 text-muted fw-semibold">
+                      <i class="bi bi-lock-fill text-warning me-1"></i>Giá vốn
+                      (MAC):
+                    </div>
+                    <div
+                      class="col-sm-7 text-danger fw-bold"
+                      id="detailCostPrice"
+                    >
+                      0 VNĐ
+                    </div>
+                  </div>
+
+                  <div class="row mb-2">
+                    <div class="col-sm-5 text-muted">
+                      Giá niêm yết (Chưa VAT):
+                    </div>
+                    <div class="col-sm-7 fw-semibold" id="detailPrice">
+                      0 VNĐ
+                    </div>
+                  </div>
+
+                  <div class="row mb-2">
+                    <div class="col-sm-5 text-muted">
+                      Thuế VAT (<span id="detailTaxRate">0%</span>):
+                    </div>
+                    <div
+                      class="col-sm-7 fw-semibold text-secondary"
+                      id="detailVatAmount"
+                    >
+                      + 0 VNĐ
+                    </div>
+                  </div>
+
+                  <div class="row pt-2 border-top">
+                    <div class="col-sm-5 text-dark fw-semibold">
+                      Giá bán cuối cùng:
+                    </div>
+                    <div
+                      class="col-sm-6 text-success fw-semibold fs-5"
+                      id="detailFinalPrice"
+                    >
+                      0 VNĐ
+                    </div>
+                  </div>
                 </div>
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted">Đơn vị tính:</div>
@@ -434,22 +588,38 @@
                   <div class="col-sm-4 text-muted">Mức tồn tối thiểu:</div>
                   <div class="col-sm-8" id="detailMinStock"></div>
                 </div>
-                
+
                 <div class="row mt-3">
                   <div class="col-12 text-muted mb-1">Mô tả:</div>
-                  <div class="col-12 p-2 bg-light border rounded" id="detailDesc" style="min-height: 60px;"></div>
+                  <div
+                    class="col-12 p-2 bg-light border rounded"
+                    id="detailDesc"
+                    style="min-height: 60px"
+                  ></div>
                 </div>
 
                 <div class="row mt-3">
                   <div class="col-12 text-muted mb-1">Thông số kỹ thuật:</div>
-                  <div class="col-12 p-2 bg-light border rounded" id="detailSpecs" style="min-height: 60px;"></div>
+                  <div
+                    class="col-12 p-2 bg-light border rounded"
+                    id="detailSpecs"
+                    style="min-height: 60px"
+                  ></div>
                 </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-            <a href="#" id="detailEditBtn" class="btn btn-primary"><i class="bi bi-pencil-square me-1"></i>Chỉnh sửa</a>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Đóng
+            </button>
+            <a href="#" id="detailEditBtn" class="btn btn-primary"
+              ><i class="bi bi-pencil-square me-1"></i>Chỉnh sửa</a
+            >
           </div>
         </div>
       </div>

@@ -1,5 +1,8 @@
 <!doctype html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+>
   <head th:insert="~{fragments :: html_head}"> </head>
   <body class="purchase-page overflow-hidden">
     <div th:replace="~{fragments :: navbar}"></div>
@@ -8,6 +11,35 @@
       <div th:replace="~{fragments :: sidebar}"></div>
 
       <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+
         <h2>Danh sách Đơn mua hàng</h2>
         <p class="text-muted mb-0">
           Quản lý các đơn mua hàng từ Nhà cung cấp và điều phối nhập kho.
@@ -15,11 +47,7 @@
 
         <div class="card mb-4 mt-3 shadow-sm">
           <div class="card-body">
-            <form
-              th:action="@{/purchases/view}"
-              method="get"
-              class="row g-3 align-items-end"
-            >
+            <form th:action="@{/purchases/view}" method="get" class="row g-3">
               <div class="col-md-6">
                 <label for="keyword" class="form-label fw-bold"
                   >Tìm kiếm đơn hàng</label
@@ -38,52 +66,68 @@
                   />
                 </div>
               </div>
-              <div class="col-md-6 d-flex gap-2">
-                <button type="submit" class="btn btn-primary px-4">
+
+              <div class="col-md-3">
+                <label for="startDate" class="form-label fw-bold"
+                  >Từ ngày</label
+                >
+                <input
+                  type="date"
+                  name="startDate"
+                  id="startDate"
+                  class="form-control"
+                  th:value="${startDate}"
+                />
+              </div>
+
+              <div class="col-md-3">
+                <label for="endDate" class="form-label fw-bold">Đến ngày</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  id="endDate"
+                  class="form-control"
+                  th:value="${endDate}"
+                />
+              </div>
+
+              <div
+                class="col-12 d-flex gap-2 justify-content-end border-top pt-3 mt-3"
+              >
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
                   Lọc dữ liệu
                 </button>
                 <a
                   th:href="@{/purchases/view}"
-                  class="btn btn-outline-secondary"
+                  class="btn btn-outline-secondary shadow-sm"
                   >Xóa lọc</a
                 >
+                <button
+                  sec:authorize="hasRole('MANAGER')"
+                  type="button"
+                  class="btn btn-warning text-dark fw-bold position-relative ms-3"
+                  data-bs-toggle="modal"
+                  data-bs-target="#approvalModal"
+                >
+                  <i class="bi bi-card-checklist me-1"></i> Chờ duyệt
+                  <span
+                    th:if="${pendingCount > 0}"
+                    id="pendingBadge"
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm"
+                    style="font-size: 0.8rem"
+                    th:text="${pendingCount}"
+                  ></span>
+                </button>
+
                 <a
+                  sec:authorize="hasAnyRole('MANAGER', 'INSPECTOR')"
                   th:href="@{/purchases/add}"
-                  class="btn btn-success ms-auto text-nowrap"
+                  class="btn btn-success text-nowrap ms-2"
                   ><i class="bi bi-plus-lg me-1"></i> Tạo đơn nhập</a
                 >
               </div>
             </form>
           </div>
-        </div>
-
-        <div
-          th:if="${successMessage}"
-          class="alert alert-success alert-dismissible fade show shadow-sm"
-          role="alert"
-        >
-          <i class="bi bi-check-circle-fill me-2"></i
-          ><span th:text="${successMessage}"></span>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="alert"
-            aria-label="Close"
-          ></button>
-        </div>
-        <div
-          th:if="${errorMessage}"
-          class="alert alert-danger alert-dismissible fade show shadow-sm"
-          role="alert"
-        >
-          <i class="bi bi-exclamation-triangle-fill me-2"></i
-          ><span th:text="${errorMessage}"></span>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="alert"
-            aria-label="Close"
-          ></button>
         </div>
 
         <div class="card shadow-sm">
@@ -92,26 +136,26 @@
               <table
                 class="table table-striped table-bordered border-dark border-opacity-25 table-hover mb-0"
               >
-                <thead class="sticky-top bg-white" style="z-index: 1">
+                <thead
+                  class="sticky-top bg-white align-middle text-center"
+                  style="z-index: 1"
+                >
                   <tr>
                     <th scope="col" class="text-center text-nowrap">STT</th>
                     <th scope="col" class="text-nowrap">Mã Đơn</th>
-                    <th scope="col">Tên Đơn / Ghi Chú</th>
-                    <th scope="col">Nhà Cung Cấp</th>
-                    <th scope="col">Kho Nhận</th>
-                    <th scope="col" class="text-nowrap text-center">
-                      Ngày Tạo
-                    </th>
-                    <th scope="col" class="text-end text-nowrap">Tổng Tiền</th>
-                    <th scope="col" class="text-center text-nowrap">
-                      Trạng Thái
-                    </th>
-                    <th scope="col" class="text-center">Xác Nhận</th>
-                    <th scope="col" class="text-center text-nowrap">
-                      Thao Tác
-                    </th>
+
+                    <th scope="col" class="text-nowrap">Tên Đơn / Ghi Chú</th>
+
+                    <th scope="col" class="text-nowrap">Nhà Cung Cấp</th>
+                    <th scope="col" class="text-nowrap">Kho Nhận</th>
+                    <th scope="col" class="text-nowrap">Ngày Tạo</th>
+                    <th scope="col" class="text-nowrap">Tổng Tiền</th>
+                    <th scope="col" class="text-nowrap">Trạng Thái</th>
+                    <th scope="col" class="text-nowrap">Kiểm Kê</th>
+                    <th scope="col" class="text-nowrap">Thao Tác</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr
                     th:each="po, state : ${purchaseOrders}"
@@ -125,41 +169,60 @@
                     th:data-received-note="${po.receivedNote}"
                     th:data-supplier="${po.supplier != null ? po.supplier.name : 'N/A'}"
                     th:data-warehouse="${po.wareHouse != null ? po.wareHouse.name : 'N/A'}"
+                    th:data-warehouse-address="${po.wareHouse != null ? po.wareHouse.location : 'Chưa cập nhật'}"
                     th:data-created="${po.createdAt != null ? #temporals.format(po.createdAt, 'dd/MM/yyyy HH:mm:ss') : ''}"
                     th:data-expected="${po.expectedArrival != null ? #temporals.format(po.expectedArrival, 'dd/MM/yyyy') : 'Chưa cập nhật'}"
                     th:data-amount="${po.totalPurchaseAmount != null ? po.totalPurchaseAmount : 0}"
                     th:data-payment="${po.paymentStatus.name()}"
-                    th:data-delivery="${po.deliveryStatus.name()}"
+                    th:data-delivery="${po.status != null ? po.status.name() : 'PENDING'}"
                     th:data-actual="${po.actualArrival != null ? #temporals.format(po.actualArrival, 'dd/MM/yyyy') : 'Chưa nhận'}"
                     th:data-result="${po.deliveryResult != null ? po.deliveryResult.name() : ''}"
                     th:data-pay-url="@{'/purchases/pay/' + ${po.id}}"
                     th:data-paid="${po.paidAmount != null ? po.paidAmount : 0}"
                     th:data-remaining="${po.getRemainingAmount()}"
+                    th:data-document="${po.deliveryDocument}"
                   >
                     <td
                       class="text-center align-middle"
                       th:text="${(currentPage - 1) * 10 + state.index + 1}"
                     ></td>
+
                     <td
-                      class="align-middle fw-bold text-primary"
+                      class="align-middle text-center fw-bold text-primary text-nowrap"
                       th:text="${po.code}"
                     ></td>
-                    <td class="align-middle">
-                      <div th:text="${po.name}" class="fw-medium"></div>
-                      <small class="text-muted" th:text="${po.note}"></small>
+
+                    <td class="align-middle" style="max-width: 200px">
+                      <div
+                        class="fw-medium text-truncate"
+                        th:title="${po.name}"
+                        th:text="${po.name}"
+                      ></div>
+                      <small
+                        class="text-muted d-block text-truncate"
+                        th:title="${po.note}"
+                        th:text="${po.note}"
+                      ></small>
                     </td>
+
+                    <td class="align-middle" style="max-width: 220px">
+                      <div
+                        class="text-truncate"
+                        th:title="${po.supplier != null ? po.supplier.name : 'N/A'}"
+                        th:text="${po.supplier != null ? po.supplier.name : 'N/A'}"
+                      ></div>
+                    </td>
+
                     <td
-                      class="align-middle"
-                      th:text="${po.supplier != null ? po.supplier.name : 'N/A'}"
-                    ></td>
-                    <td
-                      class="align-middle fw-semibold text-secondary"
+                      class="align-middle fw-semibold text-secondary text-nowrap"
                       th:text="${po.wareHouse != null ? po.wareHouse.name : 'N/A'}"
                     ></td>
+
                     <td
                       class="align-middle text-center text-nowrap"
                       th:text="${po.createdAt != null ? #temporals.format(po.createdAt, 'dd/MM/yyyy HH:mm') : ''}"
                     ></td>
+
                     <td
                       class="align-middle text-end text-nowrap fw-semibold text-danger"
                     >
@@ -171,109 +234,136 @@
                     </td>
 
                     <td class="align-middle text-nowrap">
-                      <!-- Cụm trạng thái giao hàng - Căn trái, font-weight 400 -->
                       <div class="text-start">
                         <span
-                          th:if="${po.deliveryStatus.name() == 'PENDING'}"
+                          th:if="${po.status?.name() == 'PENDING'}"
                           class="text-warning"
                           style="font-weight: 400"
+                          ><i class="bi bi-clock-history me-1"></i>Chờ xử
+                          lý</span
                         >
-                          <i class="bi bi-clock-history me-1"></i>Chờ xử lý
-                        </span>
                         <span
-                          th:if="${po.deliveryStatus.name() == 'IN_TRANSIT'}"
+                          th:if="${po.status?.name() == 'IN_TRANSIT'}"
                           class="text-primary"
                           style="font-weight: 400"
+                          ><i class="bi bi-truck me-1"></i>Đang giao hàng</span
                         >
-                          <i class="bi bi-truck me-1"></i>Đang giao hàng
-                        </span>
                         <span
-                          th:if="${po.deliveryStatus.name() == 'DELIVERED'}"
+                          th:if="${po.status?.name() == 'COMPLETED'}"
                           class="text-success"
                           style="font-weight: 400"
+                          ><i class="bi bi-check-circle-fill me-1"></i>Đã nhận
+                          hàng</span
                         >
-                          <i class="bi bi-check-circle-fill me-1"></i>Đã nhận
-                          hàng
-                        </span>
                         <span
-                          th:if="${po.deliveryStatus.name() == 'FAILED'}"
+                          th:if="${po.status?.name() == 'CANCELLED'}"
                           class="text-danger"
                           style="font-weight: 400"
+                          ><i class="bi bi-x-circle-fill me-1"></i>Đã hủy</span
                         >
-                          <i class="bi bi-x-circle-fill me-1"></i>Giao thất bại
-                        </span>
                       </div>
-
-                      <!-- Cụm trạng thái thanh toán - Căn trái, font-weight 400 -->
                       <div class="text-start mt-1">
                         <span
                           th:if="${po.paymentStatus.name() == 'PAID'}"
                           class="text-success"
                           style="font-weight: 400"
+                          ><i class="bi bi-cash-coin me-1"></i>Đã thanh
+                          toán</span
                         >
-                          <i class="bi bi-cash-coin me-1"></i>Đã thanh toán
-                        </span>
                         <span
                           th:if="${po.paymentStatus.name() == 'PARTIAL'}"
                           class="text-warning"
                           style="font-weight: 400"
+                          ><i class="bi bi-cash-coin me-1"></i>Thanh toán một
+                          phần</span
                         >
-                          <i class="bi bi-cash-coin me-1"></i>Thanh toán một
-                          phần
-                        </span>
                         <span
                           th:if="${po.paymentStatus.name() == 'UNPAID'}"
                           class="text-danger"
                           style="font-weight: 400"
+                          ><i class="bi bi-credit-card-2-front me-1"></i>Chưa
+                          thanh toán</span
                         >
-                          <i class="bi bi-credit-card-2-front me-1"></i>Chưa
-                          thanh toán
-                        </span>
                       </div>
                     </td>
 
-                    <td class="align-middle text-nowrap">
-                      <button
-                        type="button"
-                        class="btn btn-sm btn-outline-primary fw-medium w-100"
+                    <td class="align-middle text-nowrap text-center">
+                      <span
+                        class="d-block w-100"
                         data-bs-toggle="tooltip"
-                        title="Kiểm kê hàng"
-                        onclick="
-                          event.stopPropagation();
-                          openReceiptModal(this.closest('tr'));
-                        "
+                        th:title="${po.status?.name() == 'IN_TRANSIT' ? 'Kiểm kê thực tế và nhận hàng vào kho' : 'Chỉ có thể nhận hàng khi đơn ở trạng thái Đang giao hàng'}"
                       >
-                        <i class="bi bi-check2-square"></i> Nhận hàng
-                      </button>
+                        <button
+                          type="button"
+                          class="btn btn-sm fw-medium w-100"
+                          th:classappend="${po.status?.name() == 'IN_TRANSIT' ? 'btn-outline-primary' : 'btn-outline-secondary'}"
+                          th:disabled="${po.status?.name() != 'IN_TRANSIT'}"
+                          onclick="
+                            event.stopPropagation();
+                            openReceiptModal(this.closest('tr'));
+                          "
+                        >
+                          <i class="bi bi-check2-square"></i> Nhận hàng
+                        </button>
+                      </span>
                     </td>
 
                     <td class="align-middle text-center text-nowrap">
                       <a
-                        th:href="@{'/purchases/putaway/' + ${po.id}}"
-                        class="btn btn-sm btn-outline-primary fw-medium"
+                        th:href="@{/purchases/print/{id}(id=${po.id})}"
+                        target="_blank"
+                        class="btn btn-sm btn-outline-info fw-medium text-nowrap me-1"
                         onclick="event.stopPropagation()"
                         data-bs-toggle="tooltip"
-                        title="Điều phối lô hàng lên vị trí kệ"
+                        title="In phiếu kiểm kê nhập kho"
                       >
-                        <i class="bi bi-box-arrow-in-down"></i> Cất hàng
+                        <i class="bi bi-printer"></i>
                       </a>
+                      <a
+                        th:href="@{'/batches/view?keyword=' + ${po.code}}"
+                        class="btn btn-sm btn-outline-primary fw-medium text-nowrap"
+                        onclick="event.stopPropagation()"
+                        data-bs-toggle="tooltip"
+                        title="Xem danh sách các lô hàng thuộc đơn này"
+                      >
+                        <i class="bi bi-boxes me-1"></i> Lô hàng
+                      </a>
+
+                      <span
+                        class="d-inline-block me-1"
+                        data-bs-toggle="tooltip"
+                        th:title="${po.status?.name() == 'IN_TRANSIT' ? 'Báo cáo sự cố giao hàng thất bại' : 'Chỉ có thể báo thất bại khi đơn ở trạng thái Đang giao hàng'}"
+                      >
+                        <button
+                          type="button"
+                          class="btn btn-sm fw-medium"
+                          th:classappend="${po.status?.name() == 'IN_TRANSIT' ? 'btn-outline-warning' : 'btn-outline-secondary'}"
+                          th:disabled="${po.status?.name() != 'IN_TRANSIT'}"
+                          onclick="
+                            event.stopPropagation();
+                            openFailModal(this.closest('tr'));
+                          "
+                        >
+                          <i class="bi bi-x-octagon-fill"></i>
+                        </button>
+                      </span>
 
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-danger"
-                        th:attr="data-id=${po.id}, data-delivery=${po.deliveryStatus.name()}"
+                        th:attr="data-id=${po.id}, data-delivery=${po.status?.name()}"
                         onclick="
                           event.stopPropagation();
-
                           handleDeleteClick(this);
                         "
                         data-bs-toggle="tooltip"
-                        title="Hủy đơn hàng"
+                        title="Xóa đơn hàng"
                       >
                         <i class="bi bi-trash"></i>
                       </button>
                     </td>
                   </tr>
+
                   <tr th:if="${#lists.isEmpty(purchaseOrders)}">
                     <td colspan="10" class="text-center py-5 text-muted">
                       <i class="bi bi-inbox fs-2 d-block mb-2"></i>Không tìm
@@ -285,7 +375,6 @@
             </div>
           </div>
         </div>
-
         <nav
           th:if="${totalPages > 1}"
           aria-label="Page navigation"
@@ -298,10 +387,11 @@
             >
               <a
                 class="page-link"
-                th:href="@{/purchases/view(page=${currentPage - 1}, keyword=${keyword})}"
+                th:href="@{/purchases/view(page=${currentPage - 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
                 >Trước</a
               >
             </li>
+
             <li
               class="page-item"
               th:each="i : ${#numbers.sequence(1, totalPages)}"
@@ -309,17 +399,18 @@
             >
               <a
                 class="page-link"
-                th:href="@{/purchases/view(page=${i}, keyword=${keyword})}"
+                th:href="@{/purchases/view(page=${i}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
                 th:text="${i}"
               ></a>
             </li>
+
             <li
               class="page-item"
               th:classappend="${currentPage == totalPages} ? 'disabled'"
             >
               <a
                 class="page-link"
-                th:href="@{/purchases/view(page=${currentPage + 1}, keyword=${keyword})}"
+                th:href="@{/purchases/view(page=${currentPage + 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
                 >Sau</a
               >
             </li>
@@ -364,7 +455,7 @@
 
     <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-xl">
-        <form id="receiptForm" method="post">
+        <form id="receiptForm" method="post" enctype="multipart/form-data">
           <div class="modal-content">
             <div class="modal-header bg-warning-subtle text-warning-emphasis">
               <h5 class="modal-title fw-bold">
@@ -419,6 +510,18 @@
                     name="receivedNote"
                     class="form-control"
                     placeholder="Ví dụ: Thùng hàng nguyên seal, phát hiện móp 2 hộp ngoài..."
+                  />
+                </div>
+                <div class="col-12 mt-2">
+                  <label class="form-label fw-bold text-secondary"
+                    >Ảnh chứng từ giao hàng (Biên bản bàn giao, hóa
+                    đơn...)</label
+                  >
+                  <input
+                    type="file"
+                    name="deliveryDocumentFile"
+                    class="form-control form-control-sm"
+                    accept="image/*"
                   />
                 </div>
               </div>
@@ -519,6 +622,15 @@
                 </div>
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted fw-semibold">
+                    Địa chỉ kho:
+                  </div>
+                  <div
+                    class="col-sm-8 fst-italic"
+                    id="detailPoWarehouseAddress"
+                  ></div>
+                </div>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
                     Ngày tạo đơn:
                   </div>
                   <div class="col-sm-8" id="detailPoCreated"></div>
@@ -543,6 +655,28 @@
                     Kết quả giao:
                   </div>
                   <div class="col-sm-8" id="detailPoResult"></div>
+                </div>
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Chứng từ giao nhận:
+                  </div>
+                  <div class="col-sm-8">
+                    <a
+                      href="#"
+                      id="detailPoDocumentLink"
+                      target="_blank"
+                      class="btn btn-xs btn-outline-info py-0 px-2 fw-medium text-decoration-none"
+                      style="display: none"
+                    >
+                      <i class="bi bi-image me-1"></i>Xem ảnh chứng từ
+                    </a>
+                    <span
+                      id="detailPoNoDocument"
+                      class="text-muted"
+                      style="display: none"
+                      >Chưa có chứng từ</span
+                    >
+                  </div>
                 </div>
               </div>
               <div class="col-md-5">
@@ -641,6 +775,13 @@
                 <h6 class="fw-bold text-dark mb-3">
                   <i class="bi bi-box-seam me-2"></i>Danh sách sản phẩm chi tiết
                 </h6>
+                <span
+                  id="detailPoPutawayProgress"
+                  class="badge bg-secondary"
+                  style="font-size: 0.85rem"
+                >
+                  <i class="bi bi-layers me-1"></i>Tiến độ xếp kệ: Đang tải...
+                </span>
                 <div class="table-responsive border rounded">
                   <table
                     class="table table-hover table-striped table-bordered align-middle text-nowrap mb-0"
@@ -658,7 +799,6 @@
                         <th class="text-end">Đơn giá</th>
                         <th>SL Đặt</th>
                         <th>Thực nhận</th>
-                        <th>Đã cất</th>
                         <th class="text-end">Chiết khấu</th>
                         <th class="text-end">Thành tiền</th>
                       </tr>
@@ -693,6 +833,7 @@
     <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog">
         <form id="paymentForm" method="post" enctype="multipart/form-data">
+          <!-- Modal nội dung thanh toán đơn hàng -->
           <div class="modal-content">
             <div class="modal-header bg-success text-white">
               <h5 class="modal-title fw-bold">
@@ -805,6 +946,137 @@
             </div>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!--Modal báo cáo giao thất bại-->
+    <div class="modal fade" id="failModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form id="failForm" method="post">
+          <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>Báo cáo Giao
+                thất bại
+              </h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body p-4">
+              <p class="mb-3">
+                Bạn đang xác nhận đơn hàng
+                <strong id="failPoCode" class="text-danger"></strong> không thể
+                giao đến kho thành công.
+              </p>
+              <div class="mb-3">
+                <label class="form-label fw-bold"
+                  >Lý do thất bại <span class="text-danger">*</span></label
+                >
+                <textarea
+                  name="failReason"
+                  class="form-control"
+                  rows="3"
+                  placeholder="VD: Nhà cung cấp báo hết hàng, Xe tải gặp tai nạn, Hàng bị thất lạc..."
+                  required
+                ></textarea>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-bs-dismiss="modal"
+              >
+                Hủy bỏ
+              </button>
+              <button type="submit" class="btn btn-warning fw-bold text-dark">
+                Xác nhận Thất bại
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!--Modal duyệt đơn-->
+    <div class="modal fade" id="approvalModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-warning text-dark">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-card-checklist me-2"></i>Danh sách Đơn hàng chờ
+              duyệt
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 text-center">
+                <thead class="table-light">
+                  <tr>
+                    <th>Mã Đơn</th>
+                    <th class="text-start">Tên Đơn / Mục đích mua</th>
+                    <th>Ngày Tạo</th>
+                    <th>Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody id="pendingOrdersBody">
+                  <tr
+                    th:each="po : ${pendingOrders}"
+                    th:id="'pending-row-' + ${po.id}"
+                  >
+                    <td class="fw-bold text-primary" th:text="${po.code}"></td>
+                    <td class="text-start fw-medium" th:text="${po.name}"></td>
+                    <td
+                      class="text-muted"
+                      th:text="${#temporals.format(po.createdAt, 'dd/MM/yyyy HH:mm')}"
+                    ></td>
+                    <td>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-success fw-bold px-3 shadow-sm"
+                        th:attr="onclick=|approveOrderAjax('${po.id}')|"
+                      >
+                        <i class="bi bi-check2-circle me-1"></i>Duyệt
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-danger fw-bold px-3 shadow-sm ms-1"
+                        th:attr="onclick=|rejectOrderAjax('${po.id}')|"
+                      >
+                        <i class="bi bi-x-circle me-1"></i>Từ chối
+                      </button>
+                    </td>
+                  </tr>
+                  <tr th:if="${pendingCount == 0}" id="noPendingRow">
+                    <td colspan="4" class="text-muted py-5">
+                      <i class="bi bi-emoji-smile fs-2 d-block mb-2"></i>Tuyệt
+                      vời! Không còn đơn hàng nào chờ duyệt.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary px-4"
+              data-bs-dismiss="modal"
+            >
+              Đóng cửa sổ
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

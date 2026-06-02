@@ -1,0 +1,151 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:replace="~{fragments :: html_head}"> </head>
+  <body class="warehouse-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <h1>Thông Tin Nhà Kho</h1>
+        <hr />
+
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show"
+          role="alert"
+        >
+          <span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+            aria-label="Close"
+          ></button>
+        </div>
+
+        <form
+          id="warehouseForm"
+          th:action="${warehouse.id != null} ? @{/warehouses/edit/{id}(id=${warehouse.id})} : @{/warehouses/add}"
+          th:object="${warehouse}"
+          method="post"
+        >
+          <input type="hidden" th:field="*{id}" />
+
+          <h4 class="mb-3 text-primary border-bottom pb-2">
+            1. Định danh & Vị trí Kho
+          </h4>
+          <div class="alert alert-info py-2">
+            <i class="bi bi-info-circle me-1"></i> Thiết lập các thông tin cơ
+            bản giúp hệ thống nhận diện và điều phối luồng hàng hóa chính xác.
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="code" class="form-label fw-semibold">Mã Kho</label>
+              <input
+                type="text"
+                class="form-control font-monospace text-uppercase"
+                id="code"
+                th:field="*{code}"
+                placeholder="VD: WH-HN-01 (Để trống hệ thống sẽ tự sinh)"
+              />
+            </div>
+            <div class="col-md-8">
+              <label for="name" class="form-label fw-semibold"
+                >Tên Nhà Kho <span class="text-danger">*</span></label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="name"
+                th:field="*{name}"
+                placeholder="VD: Kho Tổng Phân Phối Hà Nội..."
+                required
+              />
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="location" class="form-label fw-semibold"
+              >Địa Chỉ Chi Tiết</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="location"
+              th:field="*{location}"
+              placeholder="Nhập địa chỉ đầy đủ (Số nhà, đường, quận/huyện, tỉnh/thành phố)..."
+            />
+          </div>
+
+          <h4 class="mb-3 mt-4 text-success border-bottom pb-2">
+            2. Thông Tin Liên Hệ & Trạng Thái
+          </h4>
+
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="managerName" class="form-label fw-semibold"
+                >Người Quản Lý / Thủ Kho</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="managerName"
+                th:field="*{managerName}"
+                placeholder="Nhập họ và tên người phụ trách..."
+              />
+            </div>
+            <div class="col-md-4">
+              <label for="contactPhone" class="form-label fw-semibold"
+                >Số Điện Thoại Liên Hệ</label
+              >
+              <input
+                type="text"
+                class="form-control"
+                id="contactPhone"
+                th:field="*{contactPhone}"
+                placeholder="VD: 0987.xxx.xxx"
+              />
+            </div>
+            <div class="col-md-4">
+              <label for="status" class="form-label fw-semibold"
+                >Trạng Thái Hoạt Động <span class="text-danger">*</span></label
+              >
+              <select
+                class="form-select"
+                id="status"
+                th:field="*{status}"
+                required
+              >
+                <option value="ACTIVE">Đang hoạt động</option>
+                <option value="INACTIVE">Ngừng hoạt động (Bảo trì)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-5 pt-3 border-top d-flex justify-content-start">
+            <button
+              class="btn btn-secondary px-4 me-2"
+              type="button"
+              onclick="window.location.href = '/warehouses/view'"
+            >
+              Hủy Bỏ
+            </button>
+
+            <button type="submit" class="btn btn-primary px-4 fw-bold">
+              <i class="bi bi-save me-1"></i>
+              <span
+                th:text="${warehouse.id != null ? 'Cập Nhật Nhà Kho' : 'Lưu Nhà Kho'}"
+                >Lưu</span
+              >
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+  </body>
+</html>

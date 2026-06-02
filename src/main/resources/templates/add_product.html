@@ -187,15 +187,86 @@
           </div>
 
           <div class="row mb-3">
+            <div class="col-md-4">
+              <label for="standardCost" class="form-label fw-semibold"
+                >Giá Nhập Dự Kiến</label
+              >
+              <div class="input-group">
+                <input
+                  type="number"
+                  id="standardCost"
+                  th:field="*{standardCost}"
+                  class="form-control"
+                  placeholder="0"
+                  min="0"
+                />
+                <span class="input-group-text">đ</span>
+              </div>
+              <small class="text-muted" style="font-size: 0.8rem"
+                >Dùng để gợi ý khi tạo đơn mua hàng</small
+              >
+            </div>
+
+            <div class="col-md-4">
+              <label for="basePrice" class="form-label fw-semibold text-primary"
+                >Giá Bán Niêm Yết *</label
+              >
+              <div class="input-group">
+                <input
+                  type="number"
+                  id="basePrice"
+                  th:field="*{basePrice}"
+                  class="form-control border-primary"
+                  placeholder="0"
+                  min="0"
+                  required
+                />
+                <span class="input-group-text bg-primary-subtle border-primary"
+                  >đ</span
+                >
+              </div>
+              <small class="text-muted" style="font-size: 0.8rem"
+                >Giá công khai cho khách (Chưa VAT)</small
+              >
+            </div>
+
+            <div class="col-md-4">
+              <label for="costPrice" class="form-label fw-semibold text-muted"
+                >Giá Vốn MAC</label
+              >
+              <div class="input-group">
+                <input
+                  type="number"
+                  id="costPrice"
+                  th:field="*{costPrice}"
+                  class="form-control bg-light text-danger fw-bold"
+                  placeholder="0"
+                  readonly
+                  tabindex="-1"
+                />
+                <span class="input-group-text bg-light">đ</span>
+              </div>
+              <small class="text-muted" style="font-size: 0.8rem"
+                ><i class="bi bi-lock-fill"></i> Hệ thống tự tính. Không thể
+                sửa.</small
+              >
+            </div>
+          </div>
+
+          <div class="row mb-3">
             <div class="col-md-6">
-              <label for="basePrice" class="form-label">Đơn Giá (VNĐ)</label>
+              <label for="taxRate" class="form-label fw-semibold"
+                >Thuế suất VAT (%) *</label
+              >
               <input
                 type="number"
-                id="basePrice"
-                th:field="*{basePrice}"
+                step="0.01"
+                id="taxRate"
+                th:field="*{taxRate}"
                 class="form-control"
-                placeholder="0"
+                placeholder="10.00"
                 min="0"
+                required
               />
             </div>
             <div class="col-md-6">
@@ -224,29 +295,6 @@
                 rows="3"
                 placeholder="Thông tin tổng quan về sản phẩm..."
               ></textarea>
-            </div>
-          </div>
-
-          <div class="row mb-4">
-            <div class="col-12">
-              <label for="productImage" class="form-label"
-                >Hình ảnh sản phẩm</label
-              >
-              <input
-                class="form-control"
-                type="file"
-                id="productImage"
-                name="productImage"
-                accept="image/*"
-              />
-              <button
-                type="button"
-                id="btnRemoveImage"
-                class="btn btn-sm btn-outline-danger mt-2 d-none"
-                onclick="removeImage()"
-              >
-                Xóa file đã chọn
-              </button>
             </div>
           </div>
           <hr />
@@ -314,23 +362,6 @@
             </div>
 
             <div class="row mb-3">
-              <div class="col-md-6">
-                <label for="taxRate" class="form-label"
-                  >Thuế suất VAT (%)</label
-                >
-                <input
-                  type="number"
-                  step="0.01"
-                  id="taxRate"
-                  th:field="*{taxRate}"
-                  class="form-control"
-                  placeholder="10.00"
-                  min="0"
-                />
-              </div>
-            </div>
-
-            <div class="row mb-3">
               <div class="col-12">
                 <label for="technicalSpecs" class="form-label"
                   >Thông số kỹ thuật</label
@@ -342,6 +373,28 @@
                   rows="4"
                   placeholder="Nhập thông số kỹ thuật chi tiết của sản phẩm..."
                 ></textarea>
+              </div>
+            </div>
+            <div class="row mb-4">
+              <div class="col-12">
+                <label for="productImage" class="form-label"
+                  >Hình ảnh sản phẩm</label
+                >
+                <input
+                  class="form-control"
+                  type="file"
+                  id="productImage"
+                  name="productImage"
+                  accept="image/*"
+                />
+                <button
+                  type="button"
+                  id="btnRemoveImage"
+                  class="btn btn-sm btn-outline-danger mt-2 d-none"
+                  onclick="removeImage()"
+                >
+                  Xóa file đã chọn
+                </button>
               </div>
             </div>
           </div>

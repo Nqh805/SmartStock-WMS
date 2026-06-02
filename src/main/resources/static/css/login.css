@@ -1,166 +1,185 @@
+/* ========================================================
+   GLOBAL LOGIN STYLES
+   ======================================================== */
 .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
+  /* Nền xám nhạt đan xen gradient nhẹ để làm nổi bật khối Login */
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* KHUNG LAYOUT TỔNG */
 .login-layout {
   display: flex;
   align-items: stretch;
-  gap: 0;
-  padding: 0; 
-  width: min(1100px, 95%); 
+  width: min(1000px, 95%);
+  min-height: 550px;
   margin: auto;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1); 
-  border-radius: 12px;
-  overflow: hidden; 
+  background-color: #ffffff;
+  /* Đổ bóng sâu, mượt mà giúp form nổi bật trên nền web */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
+/* Dùng cho trang Quên mật khẩu (Chỉ có 1 cột) */
 .login-layout--single {
-  width: min(520px, 95%);
+  width: min(450px, 95%);
 }
 
+/* ========================================================
+   CỘT TRÁI: FORM ĐĂNG NHẬP
+   ======================================================== */
 .login-card {
   flex: 1;
-  background-color: #dbeff3; /*main color*/
-  padding: 4rem 3.5rem; 
+  background-color: #ffffff; /* Nền trắng tinh để form dễ đọc nhất */
+  padding: 3.5rem 4rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: #000000; /*main color text*/
 }
 
-.login-card h2 {
-  text-align: center;
-  margin-bottom: 2.5rem;
+.login-card h3 {
+  font-weight: 700;
+  color: #113f4c; /* Màu xanh đen đậm, sang trọng */
   font-size: 1.8rem;
+}
+
+.login-card p.text-muted {
+  font-size: 0.95rem;
+  color: #6c757d;
+}
+
+/* Tùy chỉnh Label */
+.login-card label.form-label {
   font-weight: 600;
-}
-
-/* Tùy chỉnh Input trên nền xanh */
-.login-card .form-group {
-  margin-bottom: 1.25rem;
-}
-
-.login-card label {
-  display: block;
-  margin-bottom: 0.5rem;
+  color: #333333;
   font-size: 0.9rem;
+  margin-bottom: 0.4rem;
 }
 
-.login-card input[type="text"],
-.login-card input[type="email"],
-.login-card input[type="password"]{
-  width: 100%;
-  padding: 12px 15px;
-  background: rgba(255, 255, 255, 0.15); /* Nền trắng trong suốt nhẹ */
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  color: #fff;
-  box-sizing: border-box;
-}
-
-.login-card input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.login-page .login-card input::placeholder {
-  color: #524f4f;
-  opacity: 1;
-}
-
-/* SỬA CHECKBOX VÀ QUÊN MẬT KHẨU */
-.remember-row {
-  display: flex;
-  justify-content: space-between; /* Đẩy ra 2 đầu */
-  align-items: center;
-  margin-bottom: 2rem;
-  font-size: 0.85rem;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-.checkbox-group input {
-  margin: 0;
-  cursor: pointer;
-}
-
-.forgot-link {
-  color: #fff;
-  text-decoration: none;
-  opacity: 0.9;
-}
-
-.forgot-link:hover {
-  text-decoration: underline;
-  opacity: 1;
-}
-
-/* Nút đăng nhập nổi bật */
-.btn-login {
-  width: 100%;
-  padding: 14px;
-  background-color: #ffffff; /* Nút trắng trên nền xanh */
-  color: #48a1c0;
-  border: none;
-  border-radius: 6px;
-  font-weight: bold;
+/* Tùy chỉnh Input cực mượt */
+.login-page .form-control {
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #f8f9fa; /* Nền xám rất nhẹ */
+  color: #212529;
   font-size: 1rem;
+  transition: all 0.25s ease;
+}
+
+.login-page .form-control::placeholder {
+  color: #a0aec0;
+  font-size: 0.95rem;
+}
+
+/* Hiệu ứng khi bấm vào ô Input */
+.login-page .form-control:focus {
+  background-color: #ffffff;
+  border-color: #1c6577;
+  /* Tạo quầng sáng xanh bao quanh input */
+  box-shadow: 0 0 0 4px rgba(28, 101, 119, 0.15); 
+  outline: none;
+}
+
+/* ========================================================
+   CHECKBOX & LINK QUÊN MẬT KHẨU
+   ======================================================== */
+.login-page .form-check-label {
+  font-size: 0.9rem;
+  color: #4b5563;
   cursor: pointer;
-  transition: all 0.3s ease;
 }
 
-.btn-login:hover {
-  background-color: #f0f0f0;
-  transform: translateY(-1px);
+.login-page .form-check-input {
+  cursor: pointer;
+  border-color: #d1d5db;
 }
 
-/* GIỮ NGUYÊN MÀU TRẮNG CHO IMAGE-CARD */
-.image-card {
-  flex: 1.2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff; /* Màu trắng nguyên bản */
-  padding: 2rem;
-}
-
-.image-card img {
-  display: block;
-  width: 85%;
-  height: auto;
-  object-fit: contain;
-}
-
-.login-page .login-card h3 {
-  color: #033835;
-}
-
-.login-page .btn.btn-primary {
+.login-page .form-check-input:checked {
   background-color: #1c6577;
   border-color: #1c6577;
-  color: #ffffff;
+}
+
+.login-page a {
+  color: #1c6577;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.login-page a:hover {
+  color: #0f3e4a;
+  text-decoration: underline;
+}
+
+/* ========================================================
+   NÚT BẤM (BUTTON)
+   ======================================================== */
+.login-page .btn.btn-primary {
+  background-color: #1c6577;
+  border: none;
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  /* Đổ bóng cho nút */
+  box-shadow: 0 4px 12px rgba(28, 101, 119, 0.2);
+  transition: all 0.3s ease;
+  margin-top: 1rem;
 }
 
 .login-page .btn.btn-primary:hover,
 .login-page .btn.btn-primary:focus {
-  background-color: #093742;
-  border-color: #093742;
-  color: #ffffff;
+  background-color: #134b59;
+  transform: translateY(-2px); /* Hiệu ứng nhấc nút lên khi hover */
+  box-shadow: 0 6px 15px rgba(28, 101, 119, 0.3);
 }
 
+/* ========================================================
+   CỘT PHẢI: KHỐI HÌNH ẢNH (IMAGE CARD)
+   ======================================================== */
+.login-card.image-card {
+  flex: 1.2; /* Cho ảnh chiếm tỷ lệ to hơn form 1 chút */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Dùng màu nền xanh rất nhẹ thay vì trắng toát để tách biệt 2 cột */
+  background-color: #eaf4f6; 
+  padding: 2rem;
+  border-left: 1px solid #f1f5f9;
+}
+
+.image-card img {
+  display: block;
+  max-width: 80%;
+  height: auto;
+  object-fit: contain;
+  /* Tạo hiệu ứng 3D nhẹ cho logo/hình ảnh */
+  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.05)); 
+}
+
+/* ========================================================
+   HIỆU ỨNG TRÊN ĐIỆN THOẠI (RESPONSIVE)
+   ======================================================== */
 @media (max-width: 900px) {
   .login-layout {
-    flex-direction: column;
-    width: 90%;
+    flex-direction: column-reverse; /* Đẩy form lên trên, ảnh xuống dưới */
+    width: 100%;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .login-card {
+    padding: 2.5rem;
+  }
+
+  .login-card.image-card {
+    display: none; /* Giấu hình ảnh đi trên điện thoại để tiết kiệm diện tích */
   }
 }

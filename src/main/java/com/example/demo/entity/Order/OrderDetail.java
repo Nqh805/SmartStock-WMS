@@ -6,8 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
+import com.example.demo.entity.Product.ImportBatch;
 import com.example.demo.entity.Product.Product;
-import com.example.demo.entity.Warehouse.WareHouse;
 
 @Entity
 @Table(name = "order_details")
@@ -28,6 +28,9 @@ public class OrderDetail {
 
     @Column(name = "actual_quantity")
     private Integer actualQuantity = 0;
+
+    @Column(name = "putaway_quantity")
+    private Integer putawayQuantity = 0;
 
     @Column(name = "discount_amount")
     private BigDecimal discountAmount = BigDecimal.ZERO;

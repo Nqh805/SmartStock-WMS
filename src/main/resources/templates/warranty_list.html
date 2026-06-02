@@ -1,0 +1,484 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head th:insert="~{fragments :: html_head}"> </head>
+  <body class="rma-page overflow-hidden">
+    <div th:replace="~{fragments :: navbar}"></div>
+
+    <div class="d-flex overflow-hidden" style="height: calc(100vh - 56px)">
+      <div th:replace="~{fragments :: sidebar}"></div>
+
+      <main class="flex-grow-1 p-4 overflow-y-auto bg-light h-100">
+        <div
+          th:if="${successMessage}"
+          class="alert alert-success alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-check-circle-fill me-2"></i
+          ><span th:text="${successMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+        <div
+          th:if="${errorMessage}"
+          class="alert alert-danger alert-dismissible fade show shadow-sm"
+          role="alert"
+        >
+          <i class="bi bi-exclamation-triangle-fill me-2"></i
+          ><span th:text="${errorMessage}"></span>
+          <button
+            type="button"
+            class="btn-close"
+            data-bs-dismiss="alert"
+          ></button>
+        </div>
+
+        <h2>Danh sách Yêu cầu Bảo hành</h2>
+        <p class="text-muted mb-0">
+          Quản lý các yêu cầu hỗ trợ kỹ thuật, bảo hành thiết bị (RMA).
+        </p>
+        <div class="card mb-4 mt-3 shadow-sm border-0">
+          <div class="card-body">
+            <form th:action="@{/rma/warranties}" method="get" class="row g-3">
+              <div class="col-md-6">
+                <label for="keyword" class="form-label fw-bold"
+                  >Tìm kiếm yêu cầu</label
+                >
+                <div class="input-group shadow-sm">
+                  <span class="input-group-text bg-white border-end-0"
+                    ><i class="bi bi-search text-muted"></i
+                  ></span>
+                  <input
+                    type="text"
+                    name="keyword"
+                    class="form-control border-start-0"
+                    placeholder="Nhập mã phiếu, tên khách, số điện thoại, IMEI..."
+                    th:value="${keyword}"
+                  />
+                </div>
+              </div>
+
+              <div class="col-md-3">
+                <label for="startDate" class="form-label fw-bold"
+                  >Tiếp nhận từ ngày</label
+                >
+                <input
+                  type="date"
+                  name="startDate"
+                  id="startDate"
+                  class="form-control shadow-sm"
+                  th:value="${startDate}"
+                />
+              </div>
+
+              <div class="col-md-3">
+                <label for="endDate" class="form-label fw-bold">Đến ngày</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  id="endDate"
+                  class="form-control shadow-sm"
+                  th:value="${endDate}"
+                />
+              </div>
+
+              <div
+                class="col-12 d-flex gap-2 justify-content-end border-top pt-3 mt-3"
+              >
+                <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                  Lọc dữ liệu
+                </button>
+                <a
+                  th:href="@{/rma/warranties}"
+                  class="btn btn-outline-secondary shadow-sm"
+                  >Xóa lọc</a
+                >
+                <a
+                  th:href="@{/rma/warranties/add}"
+                  class="btn btn-success text-nowrap ms-3 shadow-sm"
+                  ><i class="bi bi-tools me-1"></i> Tiếp nhận RMA mới</a
+                >
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table
+                class="table table-striped table-hover align-middle mb-0 text-nowrap"
+              >
+                <thead
+                  class="table-light align-middle text-center"
+                  style="z-index: 1"
+                >
+                  <tr>
+                    <th style="width: 5%">STT</th>
+                    <th style="width: 12%">Mã Phiếu</th>
+                    <th style="width: 15%">Ngày Tiếp Nhận</th>
+                    <th style="width: 23%" class="text-start">Khách Hàng</th>
+                    <th style="width: 20%" class="text-start">
+                      Sản phẩm / IMEI
+                    </th>
+                    <th style="width: 15%">Trạng Thái</th>
+                    <th style="width: 10%">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    th:each="rma, state : ${rmaList}"
+                    style="cursor: pointer"
+                    title="Click đúp để xem chi tiết phiếu"
+                    ondblclick="openRmaDetailModal(this)"
+                    th:attr="data-id=${rma.id}, 
+                             data-code=${rma.code},
+                             data-cus-name=${rma.customer != null ? rma.customer.name : 'Khách vãng lai'},
+                             data-cus-phone=${rma.customer != null ? rma.customer.phone : 'N/A'},
+                             data-cus-address=${rma.customer != null ? rma.customer.address : 'N/A'},
+                             data-est-date=${rma.estimatedCompletionDate != null ? #temporals.format(rma.estimatedCompletionDate, 'dd/MM/yyyy') : 'Chưa hẹn'},
+                             data-notes=${rma.notes},
+                             data-solution=${rma.warrantySolution}"
+                  >
+                    <td
+                      class="text-center text-muted"
+                      th:text="${(currentPage != null ? (currentPage - 1) * 10 : 0) + state.index + 1}"
+                    ></td>
+
+                    <td class="align-middle text-center">
+                      <span
+                        class="badge bg-primary bg-opacity-10 text-primary fs-6 font-monospace border border-primary"
+                        th:text="${rma.code}"
+                      ></span>
+                    </td>
+
+                    <td
+                      class="align-middle text-center"
+                      th:text="${rma.createdAt != null ? #temporals.format(rma.createdAt, 'dd/MM/yyyy HH:mm') : ''}"
+                    ></td>
+
+                    <td class="align-middle text-start fw-medium text-dark">
+                      <i class="bi bi-person-circle me-1 text-secondary"></i>
+                      <span
+                        th:text="${rma.customer != null ? rma.customer.name : 'Khách vãng lai'}"
+                      ></span>
+                    </td>
+
+                    <td class="align-middle text-start">
+                      <div
+                        class="fw-semibold text-primary text-truncate"
+                        style="max-width: 200px"
+                        th:text="${rma.productName != null ? rma.productName : 'Sản phẩm'}"
+                      ></div>
+                      <small
+                        class="text-muted font-monospace"
+                        th:text="${'IMEI/SN: ' + (rma.serialNumber != null ? rma.serialNumber : 'N/A')}"
+                      ></small>
+                    </td>
+
+                    <td class="align-middle text-center">
+                      <span
+                        th:if="${rma.status?.name() == 'PROCESSING'}"
+                        class="badge bg-primary"
+                        >Đang xử lý</span
+                      >
+                      <span
+                        th:if="${rma.status?.name() == 'COMPLETED'}"
+                        class="badge bg-success"
+                        >Đã trả khách</span
+                      >
+                      <span
+                        th:if="${rma.status?.name() == 'CANCELLED'}"
+                        class="badge bg-danger"
+                        >Từ chối bảo hành</span
+                      >
+                    </td>
+
+                    <td class="align-middle text-center">
+                      <a
+                        th:href="@{/rma/warranties/print/{id}(id=${rma.id})}"
+                        target="_blank"
+                        class="btn btn-sm btn-outline-info"
+                        data-bs-toggle="tooltip"
+                        title="In biên nhận RMA"
+                        onclick="event.stopPropagation()"
+                      >
+                        <i class="bi bi-printer"></i>
+                      </a>
+
+                      <button
+                        th:if="${rma.status?.name() == 'PROCESSING'}"
+                        type="button"
+                        class="btn btn-sm btn-outline-success ms-1"
+                        data-bs-toggle="tooltip"
+                        title="Cập nhật tiến độ"
+                        onclick="
+                          event.stopPropagation();
+                          openRmaUpdateModal(this);
+                        "
+                        th:attr="data-id=${rma.id}, data-code=${rma.code}"
+                      >
+                        <i class="bi bi-arrow-clockwise"></i>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr th:if="${#lists.isEmpty(rmaList)}">
+                    <td colspan="8" class="text-center py-5 text-muted">
+                      <i class="bi bi-clipboard2-x fs-1 d-block mb-2"></i>Chưa
+                      có yêu cầu Bảo hành nào.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <nav th:if="${totalPages > 1}" class="mt-4">
+          <ul class="pagination justify-content-center shadow-sm">
+            <li
+              class="page-item"
+              th:classappend="${currentPage == 1} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/rma/warranties(page=${currentPage - 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                >Trước</a
+              >
+            </li>
+
+            <li
+              class="page-item"
+              th:each="i : ${#numbers.sequence(1, totalPages)}"
+              th:classappend="${currentPage == i} ? 'active'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/rma/warranties(page=${i}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                th:text="${i}"
+              ></a>
+            </li>
+
+            <li
+              class="page-item"
+              th:classappend="${currentPage == totalPages} ? 'disabled'"
+            >
+              <a
+                class="page-link"
+                th:href="@{/rma/warranties(page=${currentPage + 1}, keyword=${keyword}, startDate=${startDate}, endDate=${endDate})}"
+                >Sau</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </main>
+    </div>
+
+    <div
+      class="modal fade"
+      id="rmaDetailModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title text-primary fw-bold">
+              <i class="bi bi-tools me-2"></i>Chi tiết Yêu cầu
+              <span id="dtCode" class="text-dark"></span>
+            </h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row">
+              <div class="col-md-6 border-end">
+                <h6 class="fw-bold text-secondary mb-3">
+                  <i class="bi bi-person-lines-fill me-1"></i>Thông tin Khách
+                  Hàng
+                </h6>
+                <div class="mb-2">
+                  <span class="text-muted me-2">Tên KH:</span>
+                  <strong class="text-primary" id="dtCusName"></strong>
+                </div>
+                <div class="mb-2">
+                  <span class="text-muted me-2">SĐT:</span>
+                  <strong id="dtCusPhone"></strong>
+                </div>
+                <div class="mb-2">
+                  <span class="text-muted me-2">Địa chỉ:</span>
+                  <span id="dtCusAddress"></span>
+                </div>
+              </div>
+
+              <div class="col-md-6 ps-4">
+                <h6 class="fw-bold text-secondary mb-3">
+                  <i class="bi bi-calendar-check me-1"></i>Tiến độ xử lý
+                </h6>
+                <div class="mb-2">
+                  <span class="text-muted me-2">Ngày hẹn trả:</span>
+                  <strong class="text-danger fs-5" id="dtEstDate"></strong>
+                </div>
+              </div>
+            </div>
+
+            <hr />
+            <h6 class="fw-bold text-primary mb-2">
+              <i class="bi bi-tools me-1"></i>Phương án xử lý:
+            </h6>
+            <div
+              class="p-3 bg-white border border-primary rounded text-primary fw-bold mb-3"
+              id="dtSolution"
+            ></div>
+
+            <h6 class="fw-bold text-secondary mb-2">
+              Tình trạng lỗi do khách báo:
+            </h6>
+            <div
+              class="p-3 bg-light border rounded text-dark"
+              id="dtNotes"
+              style="min-height: 60px"
+            ></div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary px-4"
+              data-bs-dismiss="modal"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="rmaUpdateModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <form th:action="@{/rma/warranties/update-status}" method="post">
+          <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+              <h5 class="modal-title fw-bold">
+                <i class="bi bi-arrow-clockwise me-2"></i>Chốt kết quả Bảo hành
+              </h5>
+              <button
+                type="button"
+                class="btn-close btn-close-white"
+                data-bs-dismiss="modal"
+              ></button>
+            </div>
+            <div class="modal-body p-4">
+              <input type="hidden" id="updateRmaId" name="id" />
+
+              <div class="mb-3">
+                <span class="text-muted">Mã phiếu:</span>
+                <span
+                  id="updateRmaCode"
+                  class="fw-bold text-primary ms-2 font-monospace fs-5"
+                ></span>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold text-dark"
+                  >Kết quả xử lý <span class="text-danger">*</span></label
+                >
+                <select
+                  name="status"
+                  class="form-select border-success"
+                  required
+                >
+                  <option value="COMPLETED">
+                    Đã sửa xong (Bàn giao lại cho khách)
+                  </option>
+                  <option value="CANCELLED">
+                    Từ chối bảo hành (Trả máy nguyên trạng)
+                  </option>
+                </select>
+              </div>
+
+              <div class="mb-2">
+                <label class="form-label fw-bold"
+                  >Ghi chú / Phương án chốt (nếu có thay đổi)</label
+                >
+                <textarea
+                  name="solution"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Ghi chú chi tiết nếu có phát sinh so với dự kiến ban đầu..."
+                ></textarea>
+              </div>
+            </div>
+            <div class="modal-footer bg-light">
+              <button
+                type="button"
+                class="btn btn-secondary px-4"
+                data-bs-dismiss="modal"
+              >
+                Hủy
+              </button>
+              <button type="submit" class="btn btn-success fw-bold px-4">
+                <i class="bi bi-check-circle me-1"></i> Lưu kết quả
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/admin.js}"></script>
+    <script>
+      // Khởi tạo Tooltip
+      document.addEventListener("DOMContentLoaded", function () {
+        const tooltipTriggerList = document.querySelectorAll(
+          '[data-bs-toggle="tooltip"]',
+        );
+        [...tooltipTriggerList].map(
+          (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl),
+        );
+      });
+
+      function openRmaDetailModal(row) {
+        document.getElementById("dtCode").textContent =
+          row.getAttribute("data-code");
+        document.getElementById("dtCusName").textContent =
+          row.getAttribute("data-cus-name");
+        document.getElementById("dtCusPhone").textContent =
+          row.getAttribute("data-cus-phone");
+        document.getElementById("dtCusAddress").textContent =
+          row.getAttribute("data-cus-address");
+        document.getElementById("dtEstDate").textContent =
+          row.getAttribute("data-est-date");
+        document.getElementById("dtNotes").textContent =
+          row.getAttribute("data-notes") || "Không có ghi chú";
+        document.getElementById("dtSolution").textContent =
+          row.getAttribute("data-solution") || "Chưa có phương án cụ thể";
+        var myModal = new bootstrap.Modal(
+          document.getElementById("rmaDetailModal"),
+        );
+        myModal.show();
+      }
+      function openRmaUpdateModal(btn) {
+        document.getElementById("updateRmaId").value =
+          btn.getAttribute("data-id");
+        document.getElementById("updateRmaCode").textContent =
+          btn.getAttribute("data-code");
+
+        var updateModal = new bootstrap.Modal(
+          document.getElementById("rmaUpdateModal"),
+        );
+        updateModal.show();
+      }
+    </script>
+  </body>
+</html>

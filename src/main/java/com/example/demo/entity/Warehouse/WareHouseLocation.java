@@ -1,12 +1,11 @@
 package com.example.demo.entity.Warehouse;
 
+import org.hibernate.annotations.Formula;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "warehouse_location")
@@ -19,7 +18,6 @@ public class WareHouseLocation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Quan hệ N-1: Nhiều vị trí thuộc về 1 kho
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ware_house_id", nullable = false)
     private WareHouse wareHouse;
@@ -34,13 +32,8 @@ public class WareHouseLocation {
     private String binName;
 
     @Column(name = "location_code", unique = true, nullable = false)
-    private String locationCode;
+    private String locationCode; // Mã vạch dán trên kệ để quét (VD: K01-T02-O05)
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private LocationStatus status = LocationStatus.EMPTY;
-
-    @CreationTimestamp // Hibernate tự động lấy giờ hiện tại khi tạo mới (INSERT)
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @Formula("(SELECT COUNT(*) FROM import_batch b WHERE b.location_id = id)")
+    private Integer batchCount;
 }
