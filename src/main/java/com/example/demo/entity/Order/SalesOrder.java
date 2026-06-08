@@ -1,7 +1,6 @@
 package com.example.demo.entity.Order;
 
 import com.example.demo.entity.Partner.Customer;
-// Không cần import Employee nữa vì đã có ở OrderHeader cha
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -61,12 +60,10 @@ public class SalesOrder extends OrderHeader {
 
     public enum DeliveryMethod {
         IN_STORE,
-        SHIPPING,
-        PRE_ORDER
+        SHIPPING
     }
 
     public enum SalesStatus {
-        PENDING, // Đang chờ khách đến lấy (Dùng cho đặt trước)
         COMPLETED, // Bán tại quầy thành công
         CANCELLED, // Hủy đơn / Trả hàng
         REFUNDED // Đã hoàn tiền

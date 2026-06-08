@@ -56,6 +56,9 @@ public class RmaTicket {
     @Column(name = "warranty_solution", length = 1000)
     private String warrantySolution;
 
+    @Column(name = "replacement_serial_number")
+    private String replacementSerialNumber;
+
     public enum RmaType {
         WARRANTY,
     }

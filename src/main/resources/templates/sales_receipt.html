@@ -110,7 +110,7 @@
       <div class="mb-3">
         <div><strong>Mã HĐ:</strong> [[${order.code}]]</div>
         <div>
-          <strong>Ngày:</strong> [[${order.createdAt != null ?
+          <strong>Ngày Tạo Đơn:</strong> [[${order.createdAt != null ?
           #temporals.format(order.createdAt, 'dd/MM/yyyy HH:mm') : ''}]]
         </div>
         <div>
@@ -120,6 +120,23 @@
         <div th:if="${order.customer != null}">
           <strong>SĐT:</strong> [[${order.customer.phone}]]
         </div>
+
+        <div>
+          <strong>Hình thức:</strong>
+          <span
+            th:if="${order.deliveryMethod != null and order.deliveryMethod.name() == 'IN_STORE'}"
+            >Mua trực tiếp</span
+          >
+          <span
+            th:if="${order.deliveryMethod != null and order.deliveryMethod.name() == 'SHIPPING'}"
+            >Giao tận nơi</span
+          >
+          <span
+            th:if="${order.deliveryMethod != null and order.deliveryMethod.name() == 'PRE_ORDER'}"
+            >Đặt trước (Đến lấy)</span
+          >
+        </div>
+
         <div>
           <strong>Trạng thái:</strong>
           <span th:if="${order.paymentStatus.name() == 'PAID'}"
@@ -146,22 +163,23 @@
           <tr th:each="detail : ${order.orderDetails}">
             <td class="text-start">
               [[${detail.product != null ? detail.product.name : 'Sản phẩm'}]]
-              <div
-                th:if="${detail.discountAmount != null and detail.discountAmount > 0}"
-                style="font-size: 11px; font-style: italic"
-              >
-                (CK: -[[${#numbers.formatDecimal(detail.discountAmount, 0,
-                'COMMA', 0, 'POINT')}]] đ)
-              </div>
             </td>
             <td class="text-center">[[${detail.quantity}]]</td>
             <td class="text-end fw-bold">
               <th-block
-                th:with="lineTotal=${(detail.unitPrice * detail.quantity) - (detail.discountAmount != null ? detail.discountAmount : 0)}"
+                th:with="lineTotal=${(detail.unitPrice * detail.quantity)}"
               >
                 [[${#numbers.formatDecimal(lineTotal, 0, 'COMMA', 0, 'POINT')}]]
                 đ
               </th-block>
+              <div
+                th:if="${detail.discountAmount != null and detail.discountAmount > 0}"
+                style="font-size: 11px; font-style: italic"
+                class="text-muted"
+              >
+                ( CK: -[[${#numbers.formatDecimal(detail.discountAmount, 0,
+                'COMMA', 0, 'POINT')}]] đ )
+              </div>
             </td>
           </tr>
         </tbody>
@@ -199,7 +217,7 @@
 
       <div class="text-center mt-4" style="font-size: 12px; font-style: italic">
         Cảm ơn Quý Khách và Hẹn gặp lại!<br />
-        Hàng mua rồi miễn đổi trả (ngoại trừ lỗi NSX).
+        Mọi thắc mắc xin liên hệ hotline: 1900 9999
       </div>
     </div>
 

@@ -65,7 +65,7 @@ public class WareHouseLocationController {
                 Map<String, Object> map = new HashMap<>();
                 map.put("batchCode", b.getBatchCode());
                 map.put("productName", b.getProduct() != null ? b.getProduct().getName() : "Sản phẩm ẩn");
-                map.put("quantity", b.getQuantityOnHand());
+                map.put("quantity", b.getQuantity());
                 map.put("importDate", b.getImportDate() != null ? b.getImportDate().toString() : "");
                 return map;
             }).collect(Collectors.toList());

@@ -165,6 +165,7 @@
                     th:data-id="${po.id}"
                     th:data-code="${po.code}"
                     th:data-name="${po.name}"
+                    th:data-creator="${po.employee != null ? po.employee.fullName : 'Hệ thống'}"
                     th:data-note="${po.note}"
                     th:data-received-note="${po.receivedNote}"
                     th:data-supplier="${po.supplier != null ? po.supplier.name : 'N/A'}"
@@ -596,6 +597,13 @@
             <div class="row border-bottom pb-3 mb-4">
               <div class="col-md-7">
                 <h4 id="detailPoCode" class="mb-3 text-dark fw-bold"></h4>
+                <div class="col-sm-6 mb-2">
+                  <span class="text-muted"
+                    ><i class="bi bi-person-badge me-1"></i>Người tạo đơn:
+                  </span>
+                  <strong id="detailPoCreator" class="text-primary"></strong>
+                </div>
+                <hr />
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted fw-semibold">
                     Tên đơn hàng:
@@ -635,6 +643,7 @@
                   </div>
                   <div class="col-sm-8" id="detailPoCreated"></div>
                 </div>
+
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted fw-semibold">
                     Dự kiến giao:
@@ -818,6 +827,7 @@
               Đóng cửa sổ
             </button>
             <button
+              sec:authorize="hasAnyRole('MANAGER', 'INSPECTOR')"
               type="button"
               id="detailPaymentBtn"
               class="btn btn-success fw-bold"
@@ -1024,7 +1034,8 @@
                 <thead class="table-light">
                   <tr>
                     <th>Mã Đơn</th>
-                    <th class="text-start">Tên Đơn / Mục đích mua</th>
+                    <th class="text-start">Tên Đơn</th>
+                    <th class="text-nowrap">Người Tạo</th>
                     <th>Ngày Tạo</th>
                     <th>Thao Tác</th>
                   </tr>
@@ -1036,11 +1047,18 @@
                   >
                     <td class="fw-bold text-primary" th:text="${po.code}"></td>
                     <td class="text-start fw-medium" th:text="${po.name}"></td>
+
                     <td
-                      class="text-muted"
-                      th:text="${#temporals.format(po.createdAt, 'dd/MM/yyyy HH:mm')}"
+                      class="text-nowrap"
+                      th:text="${po.employee != null ? po.employee.fullName : 'Hệ thống'}"
                     ></td>
-                    <td>
+
+                    <td
+                      class="text-muted text-nowrap"
+                      th:text="${po.createdAt != null ? #temporals.format(po.createdAt, 'dd/MM/yyyy HH:mm') : 'Chưa cập nhật'}"
+                    ></td>
+
+                    <td class="text-nowrap">
                       <button
                         type="button"
                         class="btn btn-sm btn-success fw-bold px-3 shadow-sm"
@@ -1058,7 +1076,7 @@
                     </td>
                   </tr>
                   <tr th:if="${pendingCount == 0}" id="noPendingRow">
-                    <td colspan="4" class="text-muted py-5">
+                    <td colspan="5" class="text-muted py-5">
                       <i class="bi bi-emoji-smile fs-2 d-block mb-2"></i>Tuyệt
                       vời! Không còn đơn hàng nào chờ duyệt.
                     </td>

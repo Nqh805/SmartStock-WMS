@@ -108,8 +108,9 @@
                     >
                       Giá Lô Nhập
                     </th>
-                    <th scope="col" class="text-nowrap">SL Có Thể Bán</th>
-                    <th scope="col" class="text-nowrap">Tiến Độ Quét Serial</th>
+                    <th scope="col" class="text-nowrap">
+                      Tồn Kho (Đã quét / Tổng)
+                    </th>
                     <th scope="col" class="text-nowrap">Trạng Thái</th>
                     <th scope="col" class="text-nowrap">Quét Mã</th>
                     <th scope="col" class="text-nowrap">Cất Hàng</th>
@@ -125,161 +126,123 @@
                     th:data-code="${batch.batchCode}"
                     th:data-product="${batch.product != null ? batch.product.name : 'N/A'}"
                     th:data-warehouse="${batch.wareHouse != null ? batch.wareHouse.name : 'Chưa xếp kho'}"
-                    th:data-location="${batch.location != null ? 'Kệ: ' + batch.location.locationCode : 'Chưa xếp kệ'}"
+                    th:data-location="${batch.location != null ? 'Kệ: ' + batch.location.locationCode : 'Chưa có vị trí kệ nào được thiết lập trong hệ thống.'}"
                     th:data-date="${batch.importDate != null ? #temporals.format(batch.importDate, 'dd/MM/yyyy') : ''}"
                     th:data-po="${batch.purchaseOrder != null ? batch.purchaseOrder.code : 'Nhập Lẻ'}"
                     th:data-price="${batch.price != null ? #numbers.formatDecimal(batch.price, 0, 'COMMA', 0, 'POINT') + ' đ' : 'Chưa có giá'}"
-                    th:data-available="${batch.quantityAvailable != null ? batch.quantityAvailable : 0}"
-                    th:data-onhand="${batch.quantityOnHand != null ? batch.quantityOnHand : 0}"
-                    th:data-scanned="${scannedCounts.get(batch.id)}"
+                    th:data-quantity="${batch.quantity != null ? batch.quantity : 0}"
+                    th:data-maxallowed="${batch.maxAllowed}"
+                    th:data-scanned="${scannedCounts.get(batch.id) != null ? scannedCounts.get(batch.id) : 0}"
                   >
                     <td
                       class="text-center align-middle"
                       th:text="${(currentPage - 1) * 10 + state.index + 1}"
                     ></td>
-
                     <td
                       class="align-middle text-center fw-bold text-primary text-nowrap"
                       th:text="${batch.batchCode}"
                     ></td>
-
                     <td class="align-middle fw-medium">
                       <span
                         th:text="${batch.product != null ? batch.product.name : 'N/A'}"
                       ></span>
                     </td>
-
-                    <td class="align-middle">
-                      <div
-                        th:text="${batch.wareHouse != null ? batch.wareHouse.name : 'Chưa xếp kho'}"
-                        class="fw-semibold text-secondary"
-                      ></div>
-                      <small
-                        class="text-muted"
-                        th:text="${batch.location != null ? 'Kệ: ' + batch.location.locationCode : 'Chưa xếp kệ'}"
-                      ></small>
+                    <td class="align-middle text-center text-nowrap">
+                      <span
+                        th:if="${batch.location == null}"
+                        class="badge bg-secondary"
+                        >Chưa xếp kệ</span
+                      >
+                      <span
+                        th:if="${batch.location != null}"
+                        class="badge bg-info text-dark"
+                        th:text="${batch.wareHouse.name + ' - ' + batch.location.locationCode}"
+                      >
+                      </span>
                     </td>
-
                     <td
                       class="align-middle text-center text-nowrap"
                       th:text="${batch.importDate != null ? #temporals.format(batch.importDate, 'dd/MM/yyyy') : ''}"
                     ></td>
-                    <td class="align-middle text-center">
-                      <span
-                        th:if="${batch.purchaseOrder != null}"
-                        th:text="${batch.purchaseOrder.code}"
-                        class="badge bg-info text-dark"
-                        style="cursor: pointer"
-                        data-bs-toggle="tooltip"
-                        title="Xem chi tiết đơn mua hàng này"
-                      >
-                      </span>
+                    <td class="align-middle text-center text-nowrap">
                       <span
                         th:if="${batch.purchaseOrder == null}"
                         class="badge bg-secondary"
-                        >Nhập Lẻ</span
+                        >Nhập Kho Lẻ</span
                       >
-                    </td>
-
-                    <td class="align-middle text-end fw-bold text-danger">
                       <span
-                        th:if="${batch.price != null}"
-                        th:text="${#numbers.formatDecimal(batch.price, 0, 'COMMA', 0, 'POINT')} + ' đ'"
-                      ></span>
-                      <span
-                        th:if="${batch.price == null}"
-                        class="text-muted fw-normal"
-                        >Chưa có giá</span
+                        th:if="${batch.purchaseOrder != null}"
+                        class="badge bg-light text-dark fw-bold border"
+                        th:text="${batch.purchaseOrder.code}"
                       >
+                      </span>
                     </td>
                     <td
-                      class="align-middle text-center fw-bold"
-                      style="font-size: 0.95rem"
+                      class="align-middle text-end text-nowrap text-danger fw-bold"
+                      th:text="${batch.price != null ? #numbers.formatDecimal(batch.price, 0, 'COMMA', 0, 'POINT') + ' đ' : 'Chưa có giá'}"
+                    ></td>
+                    <td
+                      class="align-middle text-center fw-bold text-nowrap"
+                      th:with="scanned=${scannedCounts.get(batch.id) != null ? scannedCounts.get(batch.id) : 0}, 
+                      maxQty=${batch.maxAllowed > 0 ? batch.maxAllowed : (batch.quantity != null ? batch.quantity : 0)}"
                     >
-                      <span
-                        data-bs-toggle="tooltip"
-                        data-bs-placement="top"
-                        title="(có thể bán / tổng tồn)"
-                        style="cursor: help"
-                      >
-                        <span
-                          class="text-primary"
-                          th:text="${batch.quantityAvailable != null ? batch.quantityAvailable : 0}"
-                          >0</span
-                        >
-
-                        <span class="text-muted mx-1">/</span>
-                        <span
-                          class="text-secondary"
-                          th:text="${batch.quantityOnHand != null ? batch.quantityOnHand : 0}"
-                          >0</span
-                        >
-                      </span>
+                      <span class="text-primary" th:text="${scanned}">0</span> /
+                      <span class="text-secondary" th:text="${maxQty}">0</span>
                     </td>
-
-                    <td class="align-middle text-center fw-bold">
-                      <span
-                        th:text="${scannedCounts.get(batch.id)} + ' / ' + ${batch.quantityOnHand}"
-                        th:classappend="${scannedCounts.get(batch.id) == batch.quantityOnHand} ? 'text-success' : 'text-danger'"
-                      >
-                      </span>
-                    </td>
-
-                    <td class="align-middle text-nowrap">
-                      <span
-                        th:if="${scannedCounts.get(batch.id) == 0}"
-                        class="badge bg-danger"
+                    <td
+                      class="align-middle text-center text-nowrap"
+                      th:with="scanned=${scannedCounts.get(batch.id) != null ? scannedCounts.get(batch.id) : 0}, 
+                                 maxQty=${batch.maxAllowed > 0 ? batch.maxAllowed : (batch.quantity != null ? batch.quantity : 0)}"
+                    >
+                      <span th:if="${scanned == 0}" class="badge bg-danger"
                         >Chưa nạp Serial</span
                       >
                       <span
-                        th:if="${scannedCounts.get(batch.id) > 0 and scannedCounts.get(batch.id) < batch.quantityOnHand}"
+                        th:if="${scanned > 0 and scanned < maxQty}"
                         class="badge bg-warning text-dark"
                         >Đang nạp dở</span
                       >
                       <span
-                        th:if="${scannedCounts.get(batch.id) == batch.quantityOnHand}"
+                        th:if="${scanned == maxQty and maxQty > 0}"
                         class="badge bg-success"
                         >Hoàn tất</span
                       >
                     </td>
 
-                    <td class="align-middle text-center text-nowrap">
+                    <td
+                      class="align-middle text-center text-nowrap"
+                      th:with="scanned=${scannedCounts.get(batch.id) != null ? scannedCounts.get(batch.id) : 0}, 
+                                 maxQty=${batch.maxAllowed > 0 ? batch.maxAllowed : (batch.quantity != null ? batch.quantity : 0)}"
+                    >
                       <button
-                        type="button"
-                        class="btn btn-sm btn-outline-success fw-medium"
-                        th:if="${scannedCounts.get(batch.id) < batch.quantityOnHand}"
-                        th:attr="data-id=${batch.id}, data-code=${batch.batchCode}, data-product=${batch.product != null ? batch.product.name : ''}, data-total=${batch.quantityOnHand}, data-scanned=${scannedCounts.get(batch.id)}"
+                        class="btn btn-sm btn-primary"
+                        th:data-id="${batch.id}"
+                        th:data-product="${batch.product != null ? batch.product.name : 'N/A'}"
+                        th:data-quantity="${batch.maxAllowed}"
+                        th:data-scanned="${scannedCounts.get(batch.id) ?: 0}"
                         onclick="openScanModal(this)"
-                        data-bs-toggle="tooltip"
-                        title="Sử dụng súng quét để nạp mã"
                       >
-                        <i class="bi bi-upc-scan"></i> Quét Serial
+                        <i class="bi bi-upc-scan"></i>
                       </button>
                     </td>
+
                     <td class="align-middle text-center text-nowrap">
                       <button
                         type="button"
-                        class="btn btn-sm fw-medium"
-                        th:classappend="${batch.location == null ? 'btn-warning text-dark' : 'btn-outline-secondary'}"
+                        class="btn btn-sm btn-outline-primary fw-medium"
                         th:attr="data-id=${batch.id}, data-code=${batch.batchCode}, data-wh=${batch.wareHouse != null ? batch.wareHouse.name : ''}"
-                        onclick="
-                          event.stopPropagation();
-                          openPutawayModal(this);
-                        "
+                        onclick="openPutawayModal(this)"
                         data-bs-toggle="tooltip"
-                        title="Quét mã vị trí để đưa lô hàng lên kệ"
-                      >
-                        <i class="bi bi-box-arrow-in-down"></i>
-                        <span
-                          th:text="${batch.location == null ? 'Xếp Kệ' : 'Đổi Vị Trí'}"
-                        ></span>
-                      </button>
+                        title="Xếp lô hàng lên vị trí Kệ"
+                        th:text="${batch.location == null ? 'Xếp Kệ' : 'Đổi Vị Trí'}"
+                      ></button>
                     </td>
                   </tr>
                   <tr th:if="${#lists.isEmpty(batches)}">
-                    <td colspan="9" class="text-center py-5 text-muted">
-                      <i class="bi bi-inbox fs-2 d-block mb-2"></i>Chưa có lô
-                      hàng nào trong kho.
+                    <td colspan="10" class="text-center py-5 text-muted">
+                      <i class="bi bi-inbox fs-2 d-block mb-2"></i> Không tìm
+                      thấy lô hàng nào. Hãy thử điều chỉnh từ khóa tìm kiếm hoặc
+                      thêm mới lô hàng!
                     </td>
                   </tr>
                 </tbody>
@@ -324,7 +287,7 @@
                   </div>
                   <div class="text-end">
                     <div class="text-muted mb-1" style="font-size: 0.9rem">
-                      Tiến độ nạp:
+                      Tiến độ quét:
                     </div>
                     <div class="fw-bold fs-5">
                       <span id="scanCurrentCount" class="text-success">0</span>
@@ -501,7 +464,7 @@
                     </div>
                     <div class="row mb-2">
                       <div class="col-sm-5 text-muted fw-semibold">
-                        Có thể bán / Tồn:
+                        Tiến độ quét mã:
                       </div>
                       <div
                         class="col-sm-7 fw-bold text-dark"

@@ -29,8 +29,8 @@ public class ProductItem {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "batch_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "batch_id", nullable = true)
     private ImportBatch importBatch;
 
     @ManyToOne(fetch = FetchType.LAZY)

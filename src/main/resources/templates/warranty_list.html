@@ -370,7 +370,8 @@
           <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-success text-white">
               <h5 class="modal-title fw-bold">
-                <i class="bi bi-arrow-clockwise me-2"></i>Chốt kết quả Bảo hành
+                <i class="bi bi-check-circle-fill me-2"></i>Chốt & Trả Máy Bảo
+                Hành
               </h5>
               <button
                 type="button"
@@ -381,8 +382,10 @@
             <div class="modal-body p-4">
               <input type="hidden" id="updateRmaId" name="id" />
 
-              <div class="mb-3">
-                <span class="text-muted">Mã phiếu:</span>
+              <input type="hidden" name="status" value="COMPLETED" />
+
+              <div class="mb-4 bg-light p-3 rounded border">
+                <span class="text-muted">Mã phiếu RMA:</span>
                 <span
                   id="updateRmaCode"
                   class="fw-bold text-primary ms-2 font-monospace fs-5"
@@ -391,32 +394,57 @@
 
               <div class="mb-3">
                 <label class="form-label fw-bold text-dark"
-                  >Kết quả xử lý <span class="text-danger">*</span></label
+                  >Ngày trả thực tế <span class="text-danger">*</span></label
+                >
+                <input
+                  type="date"
+                  name="actualReturnDate"
+                  id="actualReturnDate"
+                  class="form-control border-success"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-bold text-dark"
+                  >Giải pháp thực tế <span class="text-danger">*</span></label
                 >
                 <select
-                  name="status"
+                  name="solution"
+                  id="warrantySolution"
                   class="form-select border-success"
+                  onchange="toggleSerialInput(this)"
                   required
                 >
-                  <option value="COMPLETED">
-                    Đã sửa xong (Bàn giao lại cho khách)
+                  <option value="Sửa chữa, thay thế linh kiện thành công">
+                    Sửa chữa, thay thế linh kiện thành công
                   </option>
-                  <option value="CANCELLED">
-                    Từ chối bảo hành (Trả máy nguyên trạng)
+                  <option value="Đổi thiết bị mới từ hãng">
+                    Đổi máy mới tinh từ hãng (1-đổi-1)
                   </option>
                 </select>
               </div>
 
-              <div class="mb-2">
-                <label class="form-label fw-bold"
-                  >Ghi chú / Phương án chốt (nếu có thay đổi)</label
-                >
-                <textarea
-                  name="solution"
-                  class="form-control"
-                  rows="3"
-                  placeholder="Ghi chú chi tiết nếu có phát sinh so với dự kiến ban đầu..."
-                ></textarea>
+              <div
+                class="mb-3 d-none p-3 bg-success bg-opacity-10 border border-success rounded shadow-sm"
+                id="newSerialDiv"
+              >
+                <label class="form-label fw-bold text-success">
+                  <i class="bi bi-upc-scan me-1"></i> Quét mã Serial/IMEI máy
+                  mới đền cho khách
+                </label>
+                <input
+                  type="text"
+                  class="form-control border-success fw-bold"
+                  id="newSerialInput"
+                  name="newSerial"
+                  placeholder="Tít súng quét mã vào đây..."
+                  autocomplete="off"
+                />
+                <small class="text-muted mt-2 d-block">
+                  <i class="bi bi-info-circle me-1"></i>Hệ thống sẽ gán máy này
+                  vào đơn hàng gốc của khách để kế thừa thời gian bảo hành.
+                </small>
               </div>
             </div>
             <div class="modal-footer bg-light">
@@ -427,57 +455,93 @@
               >
                 Hủy
               </button>
-              <button type="submit" class="btn btn-success fw-bold px-4">
-                <i class="bi bi-check-circle me-1"></i> Lưu kết quả
+              <button
+                type="submit"
+                class="btn btn-success fw-bold px-4 shadow-sm"
+              >
+                <i class="bi bi-check2-all me-1"></i> Hoàn thành phiếu
               </button>
             </div>
           </div>
         </form>
       </div>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script th:src="@{/js/admin.js}"></script>
     <script>
-      // Khởi tạo Tooltip
       document.addEventListener("DOMContentLoaded", function () {
-        const tooltipTriggerList = document.querySelectorAll(
-          '[data-bs-toggle="tooltip"]',
-        );
-        [...tooltipTriggerList].map(
-          (tooltipTriggerEl) => new bootstrap.Tooltip(tooltipTriggerEl),
-        );
+        // 1. Khởi tạo Tooltip
+        document
+          .querySelectorAll('[data-bs-toggle="tooltip"]')
+          .forEach((el) => new bootstrap.Tooltip(el));
+
+        // 2. Reset form mỗi khi mở lại modal (Chỉ khai báo sự kiện 1 LẦN DUY NHẤT ở đây)
+        const updateModalEl = document.getElementById("rmaUpdateModal");
+        if (updateModalEl) {
+          updateModalEl.addEventListener("show.bs.modal", function () {
+            // Đặt lại option về giá trị chuẩn của thẻ HTML
+            const solutionSelect = document.getElementById("warrantySolution");
+            solutionSelect.value = "Sửa chữa, thay thế linh kiện thành công";
+            toggleSerialInput(solutionSelect);
+
+            // Tự động điền ngày hôm nay
+            document.getElementById("actualReturnDate").valueAsDate =
+              new Date();
+          });
+        }
       });
 
+      // 3. Hàm bật/tắt ô nhập Serial máy mới
+      function toggleSerialInput(selectEl) {
+        const div = document.getElementById("newSerialDiv");
+        const input = document.getElementById("newSerialInput");
+        if (!div || !input) return;
+
+        if (selectEl.value === "Đổi thiết bị mới từ hãng") {
+          div.classList.remove("d-none");
+          setTimeout(() => input.focus(), 100);
+        } else {
+          div.classList.add("d-none");
+          input.value = "";
+        }
+      }
+
+      // 4. Hàm mở modal Chi tiết RMA
       function openRmaDetailModal(row) {
-        document.getElementById("dtCode").textContent =
-          row.getAttribute("data-code");
-        document.getElementById("dtCusName").textContent =
-          row.getAttribute("data-cus-name");
-        document.getElementById("dtCusPhone").textContent =
-          row.getAttribute("data-cus-phone");
-        document.getElementById("dtCusAddress").textContent =
-          row.getAttribute("data-cus-address");
-        document.getElementById("dtEstDate").textContent =
-          row.getAttribute("data-est-date");
+        const dataMap = {
+          dtCode: "data-code",
+          dtCusName: "data-cus-name",
+          dtCusPhone: "data-cus-phone",
+          dtCusAddress: "data-cus-address",
+          dtEstDate: "data-est-date",
+        };
+
+        for (const [id, attr] of Object.entries(dataMap)) {
+          document.getElementById(id).textContent = row.getAttribute(attr);
+        }
+
         document.getElementById("dtNotes").textContent =
           row.getAttribute("data-notes") || "Không có ghi chú";
         document.getElementById("dtSolution").textContent =
           row.getAttribute("data-solution") || "Chưa có phương án cụ thể";
-        var myModal = new bootstrap.Modal(
+
+        bootstrap.Modal.getOrCreateInstance(
           document.getElementById("rmaDetailModal"),
-        );
-        myModal.show();
+        ).show();
       }
+
+      // 5. Hàm mở modal Cập nhật trạng thái RMA
       function openRmaUpdateModal(btn) {
+        // Hàm này giờ chỉ thuần túy làm nhiệm vụ đẩy Data vào Modal rồi Show lên
         document.getElementById("updateRmaId").value =
           btn.getAttribute("data-id");
         document.getElementById("updateRmaCode").textContent =
           btn.getAttribute("data-code");
 
-        var updateModal = new bootstrap.Modal(
+        bootstrap.Modal.getOrCreateInstance(
           document.getElementById("rmaUpdateModal"),
-        );
-        updateModal.show();
+        ).show();
       }
     </script>
   </body>

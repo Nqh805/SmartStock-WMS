@@ -3,21 +3,18 @@ package com.example.demo.controller;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -29,6 +26,7 @@ import com.example.demo.dto.PaymentFormDTO;
 import com.example.demo.dto.PaymentTransactionDTO;
 import com.example.demo.dto.ReceiptFormDTO;
 import com.example.demo.entity.Order.PurchaseOrder;
+import com.example.demo.entity.Order.PaymentTransaction;
 import com.example.demo.entity.Partner.Supplier;
 import com.example.demo.entity.Warehouse.WareHouse;
 import com.example.demo.repository.PaymentTransactionRepository;
@@ -221,6 +219,10 @@ public class PurchaseOrderController {
         try {
             PurchaseOrder po = purchaseOrderService.getPurchaseOrderById(id);
             model.addAttribute("po", po);
+
+            List<PaymentTransaction> paymentHistory = paymentTransactionRepository
+                    .findByOrderHeaderIdOrderByPaymentDateDesc(id);
+            model.addAttribute("paymentHistory", paymentHistory);
 
             return "purchase_receipt"; // Render ra file giao diện máy in
 

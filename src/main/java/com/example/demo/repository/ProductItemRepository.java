@@ -13,16 +13,22 @@ import com.example.demo.entity.Product.ProductItem;
 
 @Repository
 public interface ProductItemRepository extends JpaRepository<ProductItem, Long> {
-    // Đếm số lượng ProductItem cho một danh sách Batch ID
-    @Query("SELECT p.importBatch.id, COUNT(p) FROM ProductItem p WHERE p.importBatch.id IN :batchIds GROUP BY p.importBatch.id")
-    List<Object[]> countByBatchIds(@Param("batchIds") List<Long> batchIds);
 
+    // Kiểm tra tồn tại Serial
     boolean existsBySerialNumber(String serialNumber);
 
+    // Đếm số lượng mã đã nạp cho 1 lô (Dùng khi tít súng quét serial)
     long countByImportBatchId(Long batchId);
 
+    // Đếm số lượng mã đã nạp cho danh sách lô (Dùng để hiển thị phân số trên bảng
+    // Lô hàng)
+    @Query("SELECT p.importBatch.id, COUNT(p) FROM ProductItem p WHERE p.importBatch.id IN :batchIds GROUP BY p.importBatch.id")
+    List<Object[]> countItemsByBatchIds(@Param("batchIds") List<Long> batchIds);
+
+    // Tìm serial thuộc lô
     List<ProductItem> findByImportBatchId(Long batchId);
 
+    // Tìm Serial chi tiết (Dùng cho module RMA)
     @Query("SELECT item FROM ProductItem item " +
             "LEFT JOIN FETCH item.product p " +
             "LEFT JOIN FETCH item.importBatch b " +
@@ -35,8 +41,12 @@ public interface ProductItemRepository extends JpaRepository<ProductItem, Long> 
             "WHERE LOWER(item.serialNumber) = LOWER(:serial)")
     Optional<ProductItem> findBySerialNumberWithFullHistory(@Param("serial") String serial);
 
+    // Tìm theo trạng thái
     List<ProductItem> findByImportBatchIdAndStatus(Long batchId, ItemStatus status);
 
+    // Tìm cơ bản
     Optional<ProductItem> findBySerialNumber(String serialNumber);
 
+    // Đếm theo sản phẩm (Có thể dùng cho báo cáo hoặc check tồn tổng)
+    long countByProductIdAndStatus(Long productId, ItemStatus status);
 }

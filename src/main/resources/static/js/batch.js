@@ -3,84 +3,76 @@ let maxAllowed = 0;
 let alreadyScanned = 0;
 let tempSerials = []; // Mảng chứa mã quét tạm thời
 
-// 2. CÁC HÀM XỬ LÝ NGHIỆP VỤ (FUNCTIONS)
-// Hàm xử lý khi CLICK ĐÚP dòng để hiển thị Popup chi tiết lô hàng và nạp Serial
 function openBatchDetailModal(row) {
     const batchId = row.getAttribute('data-id');
     
-    // 1. Gán thông tin chữ cơ bản từ dòng được click lên các thẻ ID tương ứng trong Modal
+    // Gán thông tin text cơ bản
     document.getElementById('detailBatchCode').textContent = row.getAttribute('data-code');
-    document.getElementById('detailBatchProduct').textContent = row.getAttribute('data-product');
+    document.getElementById('detailBatchProduct').textContent = row.getAttribute('data-product') || 'N/A';
     document.getElementById('detailBatchLocation').textContent = row.getAttribute('data-warehouse') + ' -> ' + row.getAttribute('data-location');
     document.getElementById('detailBatchDate').textContent = row.getAttribute('data-date');
     document.getElementById('detailBatchPrice').textContent = row.getAttribute('data-price');
     
+    // Xử lý số lượng (Tránh lỗi NaN khi lô mới chưa có data)
+    const quantity = parseInt(row.getAttribute('data-maxallowed')) || parseInt(row.getAttribute('data-quantity')) || 0;
+    const scanned = parseInt(row.getAttribute('data-scanned')) || 0;
+    const unscanned = quantity - scanned;
+
     // Đổ định dạng Badge cho mã đơn PO
     const poCode = row.getAttribute('data-po');
     document.getElementById('detailBatchPo').innerHTML = poCode === 'Nhập Lẻ' 
         ? '<span class="badge bg-secondary">Nhập Kho Lẻ</span>' 
         : `<span class="badge bg-info text-dark fw-bold">${poCode}</span>`;
         
-    // Hiển thị số lượng khả dụng / tổng tồn và số lượng đã nạp mã thực tế
-    document.getElementById('detailBatchQty').innerHTML = `
-        <span class="text-primary">${row.getAttribute('data-available')}</span> / 
-        <span class="text-secondary">${row.getAttribute('data-onhand')}</span> cái 
-        <span class="text-muted fw-normal">(Đã nạp: ${row.getAttribute('data-scanned')})</span>
-    `;
+    // Hiển thị tiến độ Tồn Kho
+    const detailQty = document.getElementById('detailBatchQty');
+    if (detailQty) {
+        detailQty.innerHTML = `
+            <span class="text-primary fw-bold fs-5">${scanned}</span> / 
+            <span class="text-secondary fw-bold fs-5">${quantity}</span> 
+            <span class="text-muted fw-normal">(Đã quét)</span>
+            <br><small class="text-danger fw-normal">Còn lại: ${unscanned} sản phẩm chưa nạp mã</small>
+        `;
+    }
 
-    // 2. Thiết lập trạng thái xoay vòng Loading cho bảng danh sách Serial trước khi nạp dữ liệu
+    // Thiết lập trạng thái xoay vòng Loading lúc đang gọi API
     const tbody = document.getElementById('detailSerialsBody');
     tbody.innerHTML = `
         <tr>
             <td colspan="3" class="text-center py-4">
                 <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-                <span class="ms-2 text-muted">Đang truy vấn danh sách mã định danh...</span>
+                <span class="ms-2 text-muted">Đang truy vấn danh sách mã...</span>
             </td>
         </tr>`;
 
-    // 3. Kích hoạt mở Popup hiển thị lên màn hình
+    // Mở Popup hiển thị lên màn hình
     const detailModal = new bootstrap.Modal(document.getElementById('batchDetailModal'));
     detailModal.show();
 
-    // 4. Gửi lệnh AJAX (Fetch API) lên hệ thống lấy dữ liệu danh sách Serial thực tế
+    // Gọi API lấy danh sách Serial
     fetch(`/batches/get-serials?batchId=${batchId}`)
     .then(response => {
         if (!response.ok) throw new Error("Không thể kết nối máy chủ");
         return response.json();
     })
     .then(data => {
-        // Kiểm tra nếu mảng rỗng
-        if (data.length === 0) {
+        // 🚀 FIX LỖI "KHÔNG HIỂN THỊ KHI CHƯA CÓ DỮ LIỆU": Bắt chặt mảng rỗng
+        if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4"><i class="bi bi-info-circle me-1"></i> Lô hàng này hiện tại chưa được nạp mã Serial nào.</td></tr>';
             return;
         }
 
-        // --- BẮT ĐẦU ĐOẠN XỬ LÝ DỮ LIỆU TỐI ƯU ---
         let rowsHTML = '';
-        
         data.forEach((item, index) => {
-            // Xử lý trạng thái máy (ItemStatus)
             let statusBadge = '';
             switch (item.status) {
-                case 'IN_STOCK':
-                    statusBadge = '<span class="badge bg-success-subtle text-success border border-success">Sẵn sàng trong kho</span>';
-                    break;
-                case 'SOLD':
-                    statusBadge = '<span class="badge bg-info-subtle text-info-emphasis border border-info">Đã bán</span>';
-                    break;
-                case 'DEFECTIVE':
-                    statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger">Lỗi / Hỏng</span>';
-                    break;
-                case 'RETURNED':
-                    statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning">Đổi trả (RMA)</span>';
-                    break;
-                default:
-                    // Đề phòng trường hợp dữ liệu cũ chưa có status (null)
-                    statusBadge = '<span class="badge bg-success-subtle text-success border border-success">Sẵn sàng trong kho</span>';
-                    break;
+                case 'IN_STOCK': statusBadge = '<span class="badge bg-success-subtle text-success border border-success">Sẵn sàng trong kho</span>'; break;
+                case 'SOLD': statusBadge = '<span class="badge bg-info-subtle text-info-emphasis border border-info">Đã bán</span>'; break;
+                case 'DEFECTIVE': statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger">Lỗi / Hỏng</span>'; break;
+                case 'RETURNED': statusBadge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning">Đổi trả (RMA)</span>'; break;
+                default: statusBadge = '<span class="badge bg-success-subtle text-success border border-success">Trong kho</span>'; break;
             }
 
-            // Cộng dồn chuỗi HTML
             rowsHTML += `
                 <tr class="align-middle">
                     <td class="text-center text-muted">${index + 1}</td>
@@ -89,21 +81,20 @@ function openBatchDetailModal(row) {
                 </tr>
             `;
         });
-
-        // Ghi đè toàn bộ chuỗi HTML vào DOM (hành động này tự động xóa luôn hiệu ứng Loading ban đầu)
         tbody.innerHTML = rowsHTML; 
-        // --- KẾT THÚC ĐOẠN XỬ LÝ DỮ LIỆU ---
     })
     .catch(error => {
         console.error("Lỗi AJAX:", error);
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle-fill me-1"></i> Gặp sự cố khi nạp danh sách Serial! Vui lòng thử lại.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle-fill me-1"></i> Lỗi nạp danh sách Serial! Vui lòng thử lại.</td></tr>';
     });
 }
-// Mở Modal và nạp thông tin
+
+
 function openScanModal(btn) {
-    // Lấy dữ liệu từ nút bấm
     currentBatchId = btn.getAttribute("data-id");
-    maxAllowed = parseInt(btn.getAttribute("data-total") || 0);
+    
+    // Gán dữ liệu số (Có phòng hờ null = 0)
+    maxAllowed = parseInt(btn.getAttribute("data-quantity") || 0); 
     alreadyScanned = parseInt(btn.getAttribute("data-scanned") || 0);
     
     // Reset lại mảng tạm & giao diện
@@ -120,7 +111,7 @@ function openScanModal(btn) {
     const modal = new bootstrap.Modal(document.getElementById('scanModal'));
     modal.show();
 
-    // Tự động focus vào ô nhập liệu để súng quét bắn luôn không cần click chuột
+    // Focus vào ô input để súng quét bắn luôn
     const scanModalEl = document.getElementById('scanModal');
     scanModalEl.addEventListener('shown.bs.modal', () => {
         document.getElementById('serialInput').focus();

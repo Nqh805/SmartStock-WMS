@@ -43,18 +43,25 @@
         vertical-align: top;
       }
 
-      .product-table th {
+      /* Đã gộp CSS cho th của 2 bảng */
+      .product-table th,
+      .payment-table th {
         background-color: #f8f9fa !important;
         -webkit-print-color-adjust: exact;
         color-adjust: exact;
         text-align: center;
         vertical-align: middle;
       }
+
+      /* Đã gộp CSS cho td, th của 2 bảng */
       .product-table td,
-      .product-table th {
+      .product-table th,
+      .payment-table td,
+      .payment-table th {
         border: 1px solid #000 !important;
         padding: 10px;
       }
+
       .empty-cell {
         width: 100px;
       }
@@ -92,9 +99,13 @@
 
     <div class="print-container">
       <div class="row border-bottom border-2 border-dark pb-3">
-        <div class="col-8">
-          <div class="store-title">HỆ THỐNG ĐIỆN THOẠI PRO-TECH</div>
+        <div class="col-8 small text-muted">
+          <div class="store-title" style="color: #333; font-size: 1.1em">
+            HỆ THỐNG ĐIỆN THOẠI PRO-TECH
+          </div>
           <div>Phòng Quản lý Kho - Vận tải</div>
+          <div>Địa chỉ: Số 1, Đường Công Nghệ, Quận 1, TP. HCM</div>
+          <div>Hotline: 1900 9999 | Email: info@protech.vn</div>
         </div>
         <div class="col-4 text-end">
           <strong>Mã đơn: </strong><br />
@@ -115,97 +126,161 @@
         >
       </div>
 
-      <table class="info-table">
-        <tr>
-          <td style="width: 15%; font-weight: bold">Nhà cung cấp:</td>
-          <td style="width: 45%">
-            <div style="font-weight: bold; text-transform: uppercase">
-              [[${po.supplier != null ? po.supplier.name : 'N/A'}]]
-            </div>
-            <div
-              style="font-size: 14px; margin-top: 3px"
-              th:if="${po.supplier != null}"
+      <div class="info-list" style="line-height: 1.8; font-size: 15px">
+        <div class="info-row">
+          <strong>Nhà cung cấp:</strong>
+          <span style="font-weight: bold; text-transform: uppercase"
+            >[[${po.supplier != null ? po.supplier.name : 'N/A'}]]</span
+          >
+          <th:block th:if="${po.supplier != null}">
+            <span
+              th:if="${po.supplier.phone != null and po.supplier.phone != ''}"
             >
-              <span
-                th:if="${po.supplier.phone != null and po.supplier.phone != ''}"
-                >SĐT: [[${po.supplier.phone}]] <br
-              /></span>
-              <span
-                th:if="${po.supplier.address != null and po.supplier.address != ''}"
-                >Đ/c: [[${po.supplier.address}]]</span
-              >
-            </div>
-          </td>
-          <td style="width: 15%; font-weight: bold">Kho tiếp nhận:</td>
-          <td style="width: 25%">
-            <div style="font-weight: bold">
-              [[${po.wareHouse != null ? po.wareHouse.name : 'N/A'}]]
-            </div>
-            <div
-              style="font-size: 14px; margin-top: 3px"
-              th:if="${po.wareHouse != null and po.wareHouse.location != null and po.wareHouse.location != ''}"
+              | SĐT: [[${po.supplier.phone}]]</span
             >
-              Đ/c: [[${po.wareHouse.location}]]
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td style="font-weight: bold">Ngày tạo đơn:</td>
-          <td>
-            [[${po.createdAt != null ? #temporals.format(po.createdAt,
-            'dd/MM/yyyy HH:mm') : ''}]]
-          </td>
-          <td style="font-weight: bold">
-            <span th:if="${po.status.name() != 'COMPLETED'}"
-              >Dự kiến giao:</span
+            <span
+              th:if="${po.supplier.address != null and po.supplier.address != ''}"
             >
-            <span th:if="${po.status.name() == 'COMPLETED'}"
-              >Ngày nhập kho:</span
+              | Đ/c: [[${po.supplier.address}]]</span
             >
-          </td>
-          <td>
-            <span th:if="${po.status.name() != 'COMPLETED'}"
-              >[[${po.expectedArrival != null ?
-              #temporals.format(po.expectedArrival, 'dd/MM/yyyy') : 'Chưa cập
-              nhật'}]]</span
-            >
-            <strong th:if="${po.status.name() == 'COMPLETED'}"
-              >[[${po.actualArrival != null ?
-              #temporals.format(po.actualArrival, 'dd/MM/yyyy') : ''}]]</strong
-            >
-          </td>
-        </tr>
-        <tr>
-          <td style="font-weight: bold">Tên / Ghi chú:</td>
-          <td colspan="3">
-            [[${po.name}]]
-            <span th:if="${po.note != null and !po.note.isEmpty()}">
-              - [[${po.note}]]</span
-            >
-          </td>
-        </tr>
+          </th:block>
+        </div>
 
-        <tr th:if="${po.status.name() == 'COMPLETED'}">
-          <td style="font-weight: bold">Tình trạng hàng:</td>
-          <td colspan="3">
-            <em
-              >[[${po.receivedNote != null ? po.receivedNote : 'Kiểm kê đủ,
-              không có ghi chú bất thường.'}]]</em
+        <div class="info-row">
+          <strong>Kho tiếp nhận:</strong>
+          <span style="font-weight: bold"
+            >[[${po.wareHouse != null ? po.wareHouse.name : 'N/A'}]]</span
+          >
+          <span
+            th:if="${po.wareHouse != null and po.wareHouse.location != null and po.wareHouse.location != ''}"
+          >
+            | Đ/c: [[${po.wareHouse.location}]]
+          </span>
+        </div>
+
+        <div class="info-row">
+          <strong>Ngày tạo đơn:</strong>
+          <span
+            >[[${po.createdAt != null ? #temporals.format(po.createdAt,
+            'dd/MM/yyyy HH:mm') : ''}]]</span
+          >
+        </div>
+
+        <div class="info-row">
+          <strong>Người tạo:</strong>
+          <th:block th:if="${po.employee != null}">
+            <strong>[[${po.employee.fullName}]]</strong>
+            <span
+              th:if="${po.employee.email != null and po.employee.email != ''}"
             >
-          </td>
-        </tr>
+              | Email: [[${po.employee.email}]]</span
+            >
+            <span
+              th:if="${po.employee.phone != null and po.employee.phone != ''}"
+            >
+              | SĐT: [[${po.employee.phone}]]</span
+            >
+          </th:block>
+          <span th:if="${po.employee == null}">N/A</span>
+        </div>
+
+        <div class="info-row">
+          <strong th:if="${po.status.name() != 'COMPLETED'}"
+            >Dự kiến giao:</strong
+          >
+          <strong th:if="${po.status.name() == 'COMPLETED'}"
+            >Ngày nhập kho:</strong
+          >
+
+          <span th:if="${po.status.name() != 'COMPLETED'}">
+            [[${po.expectedArrival != null ?
+            #temporals.format(po.expectedArrival, 'dd/MM/yyyy') : 'Chưa cập
+            nhật'}]]
+          </span>
+          <strong th:if="${po.status.name() == 'COMPLETED'}">
+            [[${po.actualArrival != null ? #temporals.format(po.actualArrival,
+            'dd/MM/yyyy') : ''}]]
+          </strong>
+        </div>
+
+        <div class="info-row">
+          <strong>Tên / Ghi chú:</strong>
+          <span>[[${po.name}]]</span>
+          <span th:if="${po.note != null and !po.note.isEmpty()}">
+            - [[${po.note}]]</span
+          >
+        </div>
+
+        <div class="info-row" th:if="${po.status.name() == 'COMPLETED'}">
+          <strong>Tình trạng hàng:</strong>
+          <em
+            >[[${po.receivedNote != null ? po.receivedNote : 'Kiểm kê đủ, không
+            có ghi chú bất thường.'}]]</em
+          >
+        </div>
+      </div>
+
+      <br />
+      <p class="fw-bold">Lịch sử thanh toán</p>
+      <table class="table payment-table">
+        <thead>
+          <tr>
+            <th style="width: 20%">Ngày thanh toán</th>
+            <th style="width: 20%">Số tiền</th>
+            <th style="width: 15%">Phương thức</th>
+            <th style="width: 20%">Mã tham chiếu</th>
+            <th style="width: 15%">Ghi chú</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            th:if="${paymentHistory == null or #lists.isEmpty(paymentHistory)}"
+          >
+            <td colspan="6" class="text-center text-muted py-3">
+              Chưa có dữ liệu thanh toán.
+            </td>
+          </tr>
+          <tr th:each="txn : ${paymentHistory}">
+            <td class="text-center align-middle">
+              [[${txn.paymentDate != null ? #temporals.format(txn.paymentDate,
+              'dd/MM/yyyy HH:mm') : ''}]]
+            </td>
+            <td class="text-end align-middle fw-bold">
+              [[${txn.amount != null ? #numbers.formatDecimal(txn.amount, 0,
+              'COMMA', 0, 'POINT') + ' đ' : '0 đ'}]]
+            </td>
+            <td
+              class="text-center align-middle"
+              th:switch="${#strings.toString(txn.paymentMethod)}"
+            >
+              <span th:case="'CASH'">Tiền mặt</span>
+              <span th:case="'TRANSFER'">Chuyển khoản</span>
+              <span th:case="'CREDIT_CARD'">Quẹt thẻ</span>
+
+              <span th:case="*">[[${txn.paymentMethod}]]</span>
+            </td>
+            <td class="text-center align-middle">
+              [[${txn.referenceCode != null ? txn.referenceCode : '-'}]]
+            </td>
+            <td class="align-middle">
+              [[${txn.note != null ? txn.note : '-'}]]
+            </td>
+          </tr>
+        </tbody>
       </table>
 
+      <br />
+      <p class="fw-bold">Danh sách sản phẩm</p>
       <table class="table product-table">
         <thead>
           <tr>
             <th style="width: 5%">STT</th>
-            <th style="width: 35%" class="text-start">
+            <th style="width: 25%" class="text-start">
               Tên Sản Phẩm / Quy Cách
             </th>
             <th style="width: 15%">Mã SKU</th>
-            <th style="width: 10%">ĐVT</th>
-            <th style="width: 10%">Yêu cầu<br />(SL Đặt)</th>
+            <th style="width: 5%">ĐVT</th>
+            <th style="width: 5%">SL</th>
             <th
               style="width: 10%"
               th:classappend="${po.status.name() != 'COMPLETED'} ? 'empty-cell' : ''"
@@ -213,7 +288,7 @@
               Thực Nhận<br />
               <em
                 th:if="${po.status.name() != 'COMPLETED'}"
-                style="font-weight: normal; font-size: 13px"
+                style="font-weight: normal; font-size: 12px"
                 >(Ghi tay)</em
               >
             </th>
@@ -286,14 +361,17 @@
       <div class="row mt-5 pt-4 text-center">
         <div class="col-4">
           <p class="fw-bold mb-5">Người Giao Hàng</p>
+          <br />
           <p><em>(Ký & ghi rõ họ tên)</em></p>
         </div>
         <div class="col-4">
           <p class="fw-bold mb-5">Thủ Kho (Xác nhận)</p>
+          <br />
           <p><em>(Ký & ghi rõ họ tên)</em></p>
         </div>
         <div class="col-4">
           <p class="fw-bold mb-5">Kế Toán / Quản Lý</p>
+          <br />
           <p><em>(Ký & ghi rõ họ tên)</em></p>
         </div>
       </div>

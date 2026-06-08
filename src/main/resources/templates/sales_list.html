@@ -135,6 +135,8 @@
                     ondblclick="openSalesDetailModal(this)"
                     th:data-id="${so.id}"
                     th:data-code="${so.code}"
+                    th:data-creator="${so.employee != null ? so.employee.fullName : 'Hệ thống'}"
+                    th:data-delivery="${so.deliveryMethod != null ? so.deliveryMethod.name() : 'IN_STORE'}"
                     th:data-customer="${so.customer != null ? so.customer.name : 'Khách vãng lai'}"
                     th:data-destination="${so.destination != null ? so.destination : 'Khách mua tại quầy'}"
                     th:data-cod="${so.cod != null ? so.cod : 0}"
@@ -321,6 +323,13 @@
             <div class="row border-bottom pb-3 mb-4">
               <div class="col-md-7">
                 <h4 id="detailSoCode" class="mb-3 text-dark fw-bold"></h4>
+                <div class="col-sm-6 mb-2">
+                  <span class="text-muted"
+                    ><i class="bi bi-person-badge me-1"></i>Người tạo đơn:
+                  </span>
+                  <strong id="detailSoCreator" class="text-primary"></strong>
+                </div>
+                <hr />
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted fw-semibold">Khách hàng:</div>
                   <div
@@ -328,6 +337,14 @@
                     id="detailSoCustomer"
                   ></div>
                 </div>
+
+                <div class="row mb-2">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Hình thức mua:
+                  </div>
+                  <div class="col-sm-8" id="detailSoDelivery"></div>
+                </div>
+
                 <div class="row mb-2">
                   <div class="col-sm-4 text-muted fw-semibold">
                     Địa chỉ giao:

@@ -5,6 +5,7 @@ function openPurchaseDetailModal(row) {
     // 1. Đổ dữ liệu các trường thông tin chung lên Header Modal
     document.getElementById('detailPoCode').textContent = row.getAttribute('data-code');
     document.getElementById('detailPoName').textContent = row.getAttribute('data-name');
+    document.getElementById('detailPoCreator').textContent = row.getAttribute('data-creator') || 'Chưa cập nhật';
     document.getElementById('detailPoSupplier').textContent = row.getAttribute('data-supplier');
     document.getElementById('detailPoWarehouse').textContent = row.getAttribute('data-warehouse');
     document.getElementById('detailPoWarehouseAddress').textContent = row.getAttribute('data-warehouse-address') || 'Chưa cập nhật';

@@ -25,17 +25,14 @@ public class ImportBatch {
     @Column(name = "batch_code", unique = true)
     private String batchCode;
 
-    @Column(name = "quantity_on_hand")
-    private Integer quantityOnHand;
-
-    @Column(name = "quantity_available")
-    private Integer quantityAvailable;
-
     @Column(name = "import_date")
     private LocalDate importDate;
 
     @Column(name = "price")
     private BigDecimal price;
+
+    @Column(name = "quantity")
+    private Integer quantity;
 
     @Column(name = "note")
     private String note;
@@ -55,4 +52,20 @@ public class ImportBatch {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id")
     private WareHouseLocation location;
+
+    @Transient
+    public Integer getMaxAllowed() {
+        if (this.purchaseOrder != null && this.purchaseOrder.getOrderDetails() != null
+                && this.product != null) {
+
+            // Lọc đúng sản phẩm này trong đơn nhập và lấy ActualQuantity
+            return this.purchaseOrder.getOrderDetails().stream()
+                    .filter(detail -> detail.getProduct() != null
+                            && detail.getProduct().getId().equals(this.product.getId()))
+                    .mapToInt(detail -> detail.getActualQuantity() != null ? detail.getActualQuantity() : 0)
+                    .sum();
+        }
+
+        return 0;
+    }
 }

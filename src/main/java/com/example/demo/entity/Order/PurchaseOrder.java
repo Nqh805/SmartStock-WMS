@@ -37,7 +37,7 @@ public class PurchaseOrder extends OrderHeader {
     private Supplier supplier;
 
     @Column(name = "paid_amount")
-    private BigDecimal paidAmount = BigDecimal.ZERO; // Mặc định ban đầu bằng 0
+    private BigDecimal paidAmount = BigDecimal.ZERO;
 
     @Column(name = "delivery_document", length = 255)
     private String deliveryDocument;

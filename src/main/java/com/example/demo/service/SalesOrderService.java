@@ -2,24 +2,29 @@ package com.example.demo.service;
 
 import com.example.demo.entity.Order.SalesOrder;
 import com.example.demo.entity.Order.OrderDetail;
+import com.example.demo.entity.Order.PaymentStatus;
 import com.example.demo.entity.Partner.Customer;
 import com.example.demo.entity.Warehouse.WareHouse;
 import com.example.demo.entity.Product.Product;
-import com.example.demo.repository.SalesOrderRepository;
-import com.example.demo.repository.CustomerRepository;
-import com.example.demo.repository.ImportBatchRepository;
-import com.example.demo.repository.ProductItemRepository;
-import com.example.demo.repository.WareHouseRepository;
-import com.example.demo.repository.ProductRepository;
+import com.example.demo.entity.Product.ProductItem;
+import com.example.demo.entity.Product.ItemStatus;
+import com.example.demo.entity.Product.ImportBatch;
+import com.example.demo.entity.User.Employee;
+import com.example.demo.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -27,17 +32,19 @@ import java.util.List;
 public class SalesOrderService {
 
     private final SalesOrderRepository salesOrderRepository;
-
     private final CustomerRepository customerRepository;
     private final WareHouseRepository wareHouseRepository;
-    private final ProductRepository productRepository;
     private final ImportBatchRepository importBatchRepository;
     private final ProductItemRepository productItemRepository;
+    private final EmployeeRepository employeeRepository;
+    private final ProductService productService;
 
-    public Page<SalesOrder> getSalesOrder(String keyword, java.time.LocalDateTime startDate,
-            java.time.LocalDateTime endDate, int page, int size) {
+    /**
+     * Lấy danh sách đơn bán hàng kèm bộ lọc từ ngày - đến ngày và phân trang
+     */
+    public Page<SalesOrder> getSalesOrder(String keyword, LocalDateTime startDate,
+            LocalDateTime endDate, int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by("id").descending());
-        // Gọi hàm searchWithFilters thay vì hàm cũ
         return salesOrderRepository.searchWithFilters(keyword, startDate, endDate, pageable);
     }
 
@@ -50,7 +57,7 @@ public class SalesOrderService {
     }
 
     public List<Product> getAllProducts() {
-        return productRepository.findAll();
+        return productService.getAllProductsWithInventory();
     }
 
     public SalesOrder getSalesOrderById(Long id) {
@@ -58,228 +65,184 @@ public class SalesOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng mã " + id));
     }
 
+    // =========================================================================
+    // 🚀 CHỐT ĐƠN 1 CHẠM POS (Tạo đơn + Trừ Serial trực tiếp + Trừ Lô + Hoàn thành)
+    // =========================================================================
     @Transactional
-    public void createNewSalesOrder(SalesOrder salesOrder) {
+    public void createNewSalesOrder(SalesOrder salesOrder, List<String> scannedSerials) {
+        // 1. Kiểm tra lớp bảo vệ đầu vào
         if (salesOrder.getOrderDetails() == null || salesOrder.getOrderDetails().isEmpty()) {
             throw new IllegalArgumentException("Không thể chốt đơn! Giỏ hàng đang trống rỗng.");
         }
+        if (scannedSerials == null || scannedSerials.isEmpty()) {
+            throw new IllegalArgumentException("Vui lòng quét ít nhất 1 mã Serial để xuất kho chốt đơn!");
+        }
 
+        // Dọn dẹp dòng trống do lỗi parse HTML giao diện nếu có
         salesOrder.getOrderDetails()
                 .removeIf(detail -> detail.getProduct() == null || detail.getProduct().getId() == null);
 
-        if (salesOrder.getOrderDetails().isEmpty()) {
-            throw new IllegalArgumentException("Vui lòng quét chọn ít nhất 1 sản phẩm hợp lệ!");
-        }
-
+        // 🚀 GIẢI PHÁP SỬA LỖI DUPLICATE ENTRY: Sinh mã SO-XXXXXXXX đúng 11 ký tự
+        // Tránh thuật toán ngày giờ cũ bị Database cắt cụt đuôi gây trùng mã sập hệ
+        // thống
         if (salesOrder.getCode() == null || salesOrder.getCode().trim().isEmpty()) {
-            String timestamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")
-                    .format(java.time.LocalDateTime.now());
-            salesOrder.setCode("SO-" + timestamp);
+            int randomNum = new Random().nextInt(90000000) + 10000000; // Đảm bảo luôn ra đúng 8 chữ số
+            salesOrder.setCode("SO-" + randomNum);
         }
 
         salesOrder.setConfirmed(true);
-        if (salesOrder.getDeliveryMethod() == SalesOrder.DeliveryMethod.PRE_ORDER) {
-            salesOrder.setStatus(SalesOrder.SalesStatus.PENDING);
-        } else {
-            salesOrder.setStatus(SalesOrder.SalesStatus.COMPLETED);
-        }
+        // Vì quét mã trực tiếp tại quầy thanh toán nên đơn hàng tự động chuyển sang
+        // COMPLETED luôn
+        salesOrder.setStatus(SalesOrder.SalesStatus.COMPLETED);
 
-        java.math.BigDecimal grandTotalSales = java.math.BigDecimal.ZERO;
+        // Lưu vết nhân viên thu ngân thực hiện giao dịch này
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        Employee currentEmployee = employeeRepository.findByUser_Username(currentUsername)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Lỗi bảo mật: Không tìm thấy hồ sơ Nhân viên của tài khoản này!"));
+        salesOrder.setEmployee(currentEmployee);
 
-        // KHỞI TẠO MỘT DANH SÁCH MỚI CHỨA CÁC CHI TIẾT ĐÃ ĐƯỢC "CHẺ" THEO LÔ
-        List<OrderDetail> finalOrderDetails = new java.util.ArrayList<>();
-        List<OrderDetail> uiDetails = salesOrder.getOrderDetails();
+        BigDecimal grandTotalSales = BigDecimal.ZERO;
+        List<OrderDetail> finalOrderDetails = new ArrayList<>();
+        int totalRequestedQty = 0;
 
-        List<com.example.demo.entity.Product.ProductItem> serialsToUpdate = new java.util.ArrayList<>();
-
-        for (OrderDetail detail : uiDetails) {
-            java.math.BigDecimal unitPrice = detail.getUnitPrice() != null ? detail.getUnitPrice()
-                    : java.math.BigDecimal.ZERO;
+        // 2. Duyệt giỏ hàng tính toán tiền bạc và chuẩn bị cấu trúc dữ liệu lưu trữ
+        for (OrderDetail detail : salesOrder.getOrderDetails()) {
+            BigDecimal unitPrice = detail.getUnitPrice() != null ? detail.getUnitPrice() : BigDecimal.ZERO;
             int requestedQty = detail.getQuantity() != null ? detail.getQuantity() : 0;
-            java.math.BigDecimal totalDiscountForLine = detail.getDiscountAmount() != null ? detail.getDiscountAmount()
-                    : java.math.BigDecimal.ZERO;
+            BigDecimal totalDiscountForLine = detail.getDiscountAmount() != null ? detail.getDiscountAmount()
+                    : BigDecimal.ZERO;
 
             if (requestedQty <= 0) {
                 throw new IllegalArgumentException("Số lượng xuất bán của sản phẩm phải lớn hơn 0!");
             }
+            totalRequestedQty += requestedQty;
 
-            // Tính chiết khấu cho mỗi 1 sản phẩm (để chia đều khi tách lô)
-            java.math.BigDecimal discountPerUnit = totalDiscountForLine
-                    .divide(java.math.BigDecimal.valueOf(requestedQty), 2, java.math.RoundingMode.HALF_UP);
-            java.math.BigDecimal remainingDiscountToAllocate = totalDiscountForLine;
+            // Thiết lập dòng chi tiết đơn hàng
+            OrderDetail singleDetail = new OrderDetail();
+            singleDetail.setProduct(detail.getProduct());
+            singleDetail.setUnitPrice(unitPrice);
+            singleDetail.setQuantity(requestedQty);
+            singleDetail.setDiscountAmount(totalDiscountForLine);
+            singleDetail.setOrderHeader(salesOrder);
+            singleDetail.setActualQuantity(requestedQty); // Xuất kho thành công đủ 100%
 
-            // --- THUẬT TOÁN CHIA LÔ THEO FIFO: VỪA CHIA LÔ VỪA KIỂM TRA TỒN KHO & TRỪ TỒN
-            // ---
-            int remainingQuantityToFulfill = requestedQty;
+            // Công thức tính toán dòng tiền
+            BigDecimal lineSubtotal = unitPrice.multiply(BigDecimal.valueOf(requestedQty));
+            BigDecimal lineTotal = lineSubtotal.subtract(totalDiscountForLine);
+            grandTotalSales = grandTotalSales
+                    .add(lineTotal.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : lineTotal);
 
-            // Lấy danh sách các lô hàng của sản phẩm này (Còn hàng & Lô cũ ưu tiên trước)
-            List<com.example.demo.entity.Product.ImportBatch> availableBatches = importBatchRepository
-                    .findByProductIdAndQuantityAvailableGreaterThanOrderByImportDateAscIdAsc(
-                            detail.getProduct().getId(), 0);
-
-            for (com.example.demo.entity.Product.ImportBatch batch : availableBatches) {
-                if (remainingQuantityToFulfill <= 0)
-                    break; // Đã lấy đủ hàng thì dừng vòng lặp
-
-                int batchAvailable = batch.getQuantityAvailable() != null ? batch.getQuantityAvailable() : 0;
-                if (batchAvailable <= 0)
-                    continue;
-
-                // Xác định số lượng sẽ lấy từ lô này
-                int quantityTakenFromBatch = Math.min(batchAvailable, remainingQuantityToFulfill);
-
-                // CẬP NHẬT 2: Trừ tồn kho thông minh
-                // Luôn luôn trừ số lượng Khả dụng (Khóa hàng)
-                batch.setQuantityAvailable(batchAvailable - quantityTakenFromBatch);
-
-                // Chỉ trừ số lượng Vật lý (OnHand) nếu KHÁCH LẤY HÀNG LUÔN
-                if (salesOrder.getDeliveryMethod() != SalesOrder.DeliveryMethod.PRE_ORDER) {
-                    batch.setQuantityOnHand(batch.getQuantityOnHand() - quantityTakenFromBatch);
-                }
-
-                importBatchRepository.save(batch);
-
-                // lấy ngẫu nhiên serial có status là đã bán
-                List<com.example.demo.entity.Product.ProductItem> itemsInBatch = productItemRepository
-                        .findByImportBatchIdAndStatus(batch.getId(),
-                                com.example.demo.entity.Product.ItemStatus.IN_STOCK);
-
-                // Chốt chặn an toàn: Đảm bảo số lượng Serial thực tế khớp với số tồn báo cáo
-                // của Lô
-                if (itemsInBatch.size() < quantityTakenFromBatch) {
-                    throw new IllegalStateException("Lỗi sai lệch dữ liệu: Lô hàng " + batch.getBatchCode()
-                            + " báo còn " + batchAvailable + " cái nhưng số lượng mã Serial thực tế trong kho chỉ có "
-                            + itemsInBatch.size() + " cái!");
-                }
-
-                // Cắt lấy đúng số lượng Serial cần thiết (Từ 0 đến quantityTakenFromBatch)
-                List<com.example.demo.entity.Product.ProductItem> pickedSerials = itemsInBatch.subList(0,
-                        quantityTakenFromBatch);
-
-                for (com.example.demo.entity.Product.ProductItem serialItem : pickedSerials) {
-                    serialItem.setStatus(com.example.demo.entity.Product.ItemStatus.SOLD);
-                    // Bỏ tạm vào rổ, lát Đơn hàng lưu xong có ID rồi mình mới móc nối vào nhau
-                    serialsToUpdate.add(serialItem);
-                }
-
-                // --- TẠO RA MỘT ORDER DETAIL MỚI CHO PHẦN ĐÃ LẤY TỪ LÔ NÀY ---
-                OrderDetail splitDetail = new OrderDetail();
-                splitDetail.setProduct(detail.getProduct());
-                splitDetail.setUnitPrice(unitPrice);
-                splitDetail.setQuantity(quantityTakenFromBatch);
-
-                // Giảm số lượng cần lấy
-                remainingQuantityToFulfill -= quantityTakenFromBatch;
-
-                // Phân bổ chiết khấu (Nếu là lượt vét cuối cùng, nhồi hết số dư chiết khấu vào
-                // để không lệch 1 đồng nào)
-                java.math.BigDecimal splitDiscount;
-                if (remainingQuantityToFulfill == 0) {
-                    splitDiscount = remainingDiscountToAllocate;
-                } else {
-                    splitDiscount = discountPerUnit.multiply(java.math.BigDecimal.valueOf(quantityTakenFromBatch));
-                }
-                splitDetail.setDiscountAmount(splitDiscount);
-                remainingDiscountToAllocate = remainingDiscountToAllocate.subtract(splitDiscount);
-
-                // Ghi nhận nguồn gốc Lô hàng cho dòng này
-                splitDetail.setImportBatch(batch);
-                splitDetail.setOrderHeader(salesOrder);
-                splitDetail.setActualQuantity(0);
-                splitDetail.setPutawayQuantity(0);
-
-                // Tính toán thành tiền của dòng chia nhỏ này
-                java.math.BigDecimal lineSubtotal = unitPrice
-                        .multiply(java.math.BigDecimal.valueOf(quantityTakenFromBatch));
-                java.math.BigDecimal lineTotal = lineSubtotal.subtract(splitDiscount);
-                if (lineTotal.compareTo(java.math.BigDecimal.ZERO) < 0) {
-                    lineTotal = java.math.BigDecimal.ZERO;
-                }
-
-                grandTotalSales = grandTotalSales.add(lineTotal);
-
-                // Đưa vào danh sách cuối cùng để lưu
-                finalOrderDetails.add(splitDetail);
-            }
-
-            // bán vượt
-            if (remainingQuantityToFulfill > 0) {
-                throw new IllegalArgumentException("Lỗi tồn kho: Sản phẩm '"
-                        + detail.getProduct().getName()
-                        + "' không đủ hàng trong kho! Còn thiếu " + remainingQuantityToFulfill + " cái.");
-            }
+            finalOrderDetails.add(singleDetail);
         }
 
-        // Ghi đè lại bằng danh sách đã được chẻ nhỏ theo lô
+        // 🚀 KHIÊN BẢO VỆ KÉP (ANTI-HACK): Chống sửa đổi mã HTML tăng/giảm ảo số lượng
+        if (totalRequestedQty != scannedSerials.size()) {
+            throw new IllegalArgumentException("Lỗi nghiêm trọng: Tổng số lượng hàng trong giỏ (" + totalRequestedQty
+                    + ") đang không khớp với số mã Serial thực tế được bắn từ súng quét (" + scannedSerials.size()
+                    + ")!");
+        }
+
+        // Tính tổng tiền cuối cùng bao gồm cả Phí Ship (nếu có)
+        BigDecimal shippingFee = salesOrder.getShippingFee() != null ? salesOrder.getShippingFee() : BigDecimal.ZERO;
+        salesOrder.setTotalSalesAmount(grandTotalSales.add(shippingFee));
         salesOrder.setOrderDetails(finalOrderDetails);
-        salesOrder.setTotalSalesAmount(grandTotalSales);
 
-        // Xử lý thanh toán
-        java.math.BigDecimal paidAmt = salesOrder.getPaidAmount() != null ? salesOrder.getPaidAmount()
-                : java.math.BigDecimal.ZERO;
-        if (paidAmt.compareTo(grandTotalSales) > 0) {
-            salesOrder.setPaidAmount(grandTotalSales);
-            paidAmt = grandTotalSales;
+        // 3. Phân tích trạng thái thanh toán đơn hàng
+        BigDecimal paidAmt = salesOrder.getPaidAmount() != null ? salesOrder.getPaidAmount() : BigDecimal.ZERO;
+        if (paidAmt.compareTo(salesOrder.getTotalSalesAmount()) > 0) {
+            paidAmt = salesOrder.getTotalSalesAmount();
         }
+        salesOrder.setPaidAmount(paidAmt);
 
-        if (paidAmt.compareTo(grandTotalSales) >= 0 && grandTotalSales.compareTo(java.math.BigDecimal.ZERO) > 0) {
-            salesOrder.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.PAID);
-        } else if (paidAmt.compareTo(java.math.BigDecimal.ZERO) > 0) {
-            salesOrder.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.PARTIAL);
+        if (paidAmt.compareTo(salesOrder.getTotalSalesAmount()) >= 0
+                && salesOrder.getTotalSalesAmount().compareTo(BigDecimal.ZERO) > 0) {
+            salesOrder.setPaymentStatus(PaymentStatus.PAID);
+        } else if (paidAmt.compareTo(BigDecimal.ZERO) > 0) {
+            salesOrder.setPaymentStatus(PaymentStatus.PARTIAL);
         } else {
-            salesOrder.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.UNPAID);
+            salesOrder.setPaymentStatus(PaymentStatus.UNPAID);
         }
 
-        salesOrderRepository.save(salesOrder);
-
-        for (com.example.demo.entity.Product.ProductItem item : serialsToUpdate) {
-            item.setSalesOrder(salesOrder);
+        // Tự động tính tiền COD thu hộ dựa theo phương thức vận chuyển
+        if (salesOrder.getDeliveryMethod() == SalesOrder.DeliveryMethod.SHIPPING) {
+            salesOrder.setCod(salesOrder.getTotalSalesAmount().subtract(paidAmt));
+        } else {
+            salesOrder.setCod(BigDecimal.ZERO);
         }
-        productItemRepository.saveAll(serialsToUpdate);
+
+        List<ProductItem> itemsToUpdate = new ArrayList<>();
+
+        for (String serial : scannedSerials) {
+            ProductItem item = productItemRepository.findBySerialNumber(serial.trim())
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Mã Serial/IMEI '" + serial + "' không tồn tại dưới cơ sở dữ liệu!"));
+
+            // Kiểm tra trạng thái máy vật lý tại thời điểm chốt đơn
+            if (item.getStatus() != ItemStatus.IN_STOCK) {
+                throw new IllegalStateException("Mã Serial/IMEI '" + serial
+                        + "' đang không ở trạng thái Sẵn sàng bán (Có thể đã xuất kho từ trước)!");
+            }
+
+            // A. Chuyển đổi trạng thái máy sang ĐÃ BÁN.
+            // Không gán salesOrder vào ProductItem trước khi đơn hàng đã được lưu,
+            // để tránh Hibernate tham chiếu tới SalesOrder transient.
+            item.setStatus(ItemStatus.SOLD);
+            itemsToUpdate.add(item);
+
+            // B. TRUY VẤN NGƯỢC VÀ TRỪ TỒN ĐÚNG LÔ HÀNG CỦA THIẾT BỊ ĐÓ (Specific
+            // Identification)
+            ImportBatch batch = item.getImportBatch();
+            if (batch.getQuantity() == null || batch.getQuantity() <= 0) {
+                throw new IllegalStateException(
+                        "Lỗi logic kho: Lô hàng mang mã " + batch.getBatchCode() + " đã cạn kiệt tồn kho thực tế!");
+            }
+            batch.setQuantity(batch.getQuantity() - 1);
+            importBatchRepository.save(batch); // Cập nhật số lượng lô hàng
+        }
+
+        SalesOrder savedOrder = salesOrderRepository.save(salesOrder);
+
+        for (ProductItem item : itemsToUpdate) {
+            item.setSalesOrder(savedOrder);
+        }
+        productItemRepository.saveAll(itemsToUpdate);
     }
 
     @Transactional
-    public void processPayment(Long orderId, java.math.BigDecimal amountToPay) {
-        // 1. Tìm đơn hàng
+    public void processPayment(Long orderId, BigDecimal amountToPay) {
         SalesOrder order = salesOrderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng mã " + orderId));
 
-        // 2. Kiểm tra nếu đơn đã thanh toán đủ thì không cho đóng tiền thêm
-        if (order.getPaymentStatus() == com.example.demo.entity.Order.PaymentStatus.PAID) {
-            throw new IllegalStateException("Đơn hàng này đã được thanh toán đầy đủ trước đó!");
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new IllegalStateException("Đơn hàng này đã được tất toán đầy đủ trước đó!");
         }
 
-        // 3. Cộng dồn số tiền khách vừa đưa vào tổng tiền đã trả trước đó
-        java.math.BigDecimal currentPaid = order.getPaidAmount() != null ? order.getPaidAmount()
-                : java.math.BigDecimal.ZERO;
-        java.math.BigDecimal newPaidAmount = currentPaid.add(amountToPay);
+        BigDecimal currentPaid = order.getPaidAmount() != null ? order.getPaidAmount() : BigDecimal.ZERO;
+        BigDecimal newPaidAmount = currentPaid.add(amountToPay);
+        BigDecimal totalAmount = order.getTotalSalesAmount() != null ? order.getTotalSalesAmount() : BigDecimal.ZERO;
 
-        // 4. Lấy tổng tiền của đơn hàng
-        java.math.BigDecimal totalAmount = order.getTotalSalesAmount() != null ? order.getTotalSalesAmount()
-                : java.math.BigDecimal.ZERO;
-
-        // 5. Cập nhật số tiền đã trả (Nếu khách đưa dư tiền, chỉ ghi nhận tối đa bằng
-        // giá trị đơn hàng)
         if (newPaidAmount.compareTo(totalAmount) > 0) {
             order.setPaidAmount(totalAmount);
-            // Ở bước này thực tế sẽ sinh ra biến "Tiền thối lại (Change)" cho khách
         } else {
             order.setPaidAmount(newPaidAmount);
         }
 
-        // 6. Đánh giá và cập nhật lại trạng thái thanh toán
+        // Tái đánh giá lại trạng thái dòng tiền
         if (order.getPaidAmount().compareTo(totalAmount) >= 0) {
-            order.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.PAID);
-        } else if (order.getPaidAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
-            order.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.PARTIAL);
+            order.setPaymentStatus(PaymentStatus.PAID);
+        } else if (order.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+            order.setPaymentStatus(PaymentStatus.PARTIAL);
         } else {
-            order.setPaymentStatus(com.example.demo.entity.Order.PaymentStatus.UNPAID);
+            order.setPaymentStatus(PaymentStatus.UNPAID);
+        }
+
+        // Cập nhật lại công nợ COD cho bên giao vận nếu là đơn Ship
+        if (order.getDeliveryMethod() == SalesOrder.DeliveryMethod.SHIPPING) {
+            BigDecimal cod = totalAmount.subtract(order.getPaidAmount());
+            order.setCod(cod.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : cod);
         }
 
         salesOrderRepository.save(order);
-    }
-
-    public void createSalesOrder(SalesOrder salesOrder) {
-        throw new UnsupportedOperationException("Unimplemented method 'createSalesOrder'");
     }
 }

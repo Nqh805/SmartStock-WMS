@@ -17,7 +17,7 @@ public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> 
 
         List<ImportBatch> findByLocationId(Long locationId);
 
-        @Query("SELECT SUM(b.quantityOnHand) FROM ImportBatch b WHERE b.product.id = :productId")
+        @Query("SELECT SUM(b.quantity) FROM ImportBatch b WHERE b.product.id = :productId")
         Integer sumQuantityByProductId(@Param("productId") Long productId);
 
         // 1. Hàm lấy TẤT CẢ (Kèm FETCH các bảng liên quan)
@@ -48,6 +48,13 @@ public interface ImportBatchRepository extends JpaRepository<ImportBatch, Long> 
                                         "LOWER(po.code) = LOWER(:keyword))")
         Page<ImportBatch> searchBatches(@Param("keyword") String keyword, Pageable pageable);
 
-        List<ImportBatch> findByProductIdAndQuantityAvailableGreaterThanOrderByImportDateAscIdAsc(Long productId,
+        List<ImportBatch> findByProductIdAndQuantityGreaterThanOrderByImportDateAscIdAsc(Long productId,
                         Integer minQuantity);
+
+        // Bác thêm hàm này vào ImportBatchRepository.java nhé:
+        @org.springframework.data.jpa.repository.Query("SELECT DISTINCT b FROM ImportBatch b " +
+                        "JOIN FETCH b.product " +
+                        "JOIN FETCH b.wareHouse " +
+                        "ORDER BY b.importDate DESC, b.id DESC")
+        java.util.List<com.example.demo.entity.Product.ImportBatch> findAllWithProductAndWarehouse();
 }

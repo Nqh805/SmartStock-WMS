@@ -116,8 +116,10 @@
                   <option value="" data-address="">
                     -- Chọn Kho lưu trữ --
                   </option>
+
                   <option
                     th:each="wh : ${warehouses}"
+                    th:if="${#strings.equalsIgnoreCase(wh.status, 'ACTIVE')}"
                     th:value="${wh.id}"
                     th:text="${wh.name}"
                     th:data-address="${wh.location != null ? wh.location : 'Chưa có thông tin địa chỉ'}"

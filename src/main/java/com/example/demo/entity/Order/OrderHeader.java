@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import com.example.demo.entity.User.Employee;
 import com.example.demo.entity.Warehouse.WareHouse;
 
@@ -34,7 +36,8 @@ public class OrderHeader {
     @Column(name = "payment_status")
     private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "confirmed")
@@ -50,12 +53,10 @@ public class OrderHeader {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
-    // THÊM MỚI LIÊN KẾT NÀY
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ware_house_id")
     private WareHouse wareHouse;
 
-    @OneToMany(mappedBy = "orderHeader", cascade = CascadeType.ALL, orphanRemoval = true) // chi tiết sản phẩm sẽ tự
-                                                                                          // động bị xóa
+    @OneToMany(mappedBy = "orderHeader", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderDetail> orderDetails = new ArrayList<>();
 }

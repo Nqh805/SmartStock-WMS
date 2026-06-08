@@ -207,18 +207,24 @@ function initSelect2(element) {
 }
 
 function updateWarehouseAddress(selectObj) {
-            var selectedOption = selectObj.options[selectObj.selectedIndex];
-            var address = selectedOption.getAttribute('data-address');
-            var container = document.getElementById('warehouseAddressContainer');
-            var textSpan = document.getElementById('warehouseAddressText');
+    // 1. Dùng const thay cho var với các biến không bị gán lại giá trị
+    const selectedOption = selectObj.options[selectObj.selectedIndex];
+    const address = selectedOption.getAttribute('data-address');
+    
+    const container = document.getElementById('warehouseAddressContainer');
+    const textSpan = document.getElementById('warehouseAddressText');
 
-            if (address && selectObj.value !== "") {
-                textSpan.textContent = address;
-                container.style.display = 'block';
-            } else {
-                container.style.display = 'none';
-            }
-        }
+    // 2. Lớp bảo vệ: Tránh lỗi "Cannot read properties of null" nếu HTML lỡ thiếu ID
+    if (!container || !textSpan) return;
+
+    // 3. Logic xử lý hiển thị
+    if (address && selectObj.value !== "") {
+        textSpan.textContent = address;
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
+}
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.product-select').forEach(select => {
         initSelect2(select);

@@ -1,108 +1,103 @@
 let rowIndex = 0; // Biến đếm index cho mảng orderDetails[]
 
 $(document).ready(function() {
-    // 1. Khởi tạo Select2 cho Khách hàng
-    $('.customer-select').select2({
-        theme: 'bootstrap-5',
-        width: 'style'
-    });
+    // 1. Khởi tạo Khách hàng & Phí ship
+    $('.customer-select').select2({ theme: 'bootstrap-5', width: 'style' });
+    toggleShippingFee();
+    
+    $('#paidAmount').on('input', calculateCOD);
+    $('#shippingFeeInput').on('input', calculateGrandTotal);
 
-    // bôi đen cả ô nhập tiền
-    $('#paidAmount').on('focus', function() {
-        $(this).select();
-    });
-    // 2. Khởi tạo Select2 cho Thanh Quét Mã / Tìm kiếm SP
-    $('#posProductSearch').select2({
-        theme: 'bootstrap-5',
-        width: 'style', // Thay đổi ở đây
-        placeholder: "Quét mã vạch (Barcode/SKU) hoặc nhập Tên sản phẩm...",
-        allowClear: true
-    }).on('select2:select', function (e) {
-        let option = $(e.params.data.element);
-        let prodId = option.val();
-        
-        if (prodId) {
-            addProductToCart(option);
-            $(this).val(null).trigger('change'); 
-            $(this).select2('close'); 
+    // 2. SỰ KIỆN SÚNG QUÉT MÃ SERIAL
+    $('#posSerialSearch').on('keydown', function(e) {
+        if (e.which === 13) { 
+            e.preventDefault(); 
+            let serial = $(this).val().trim();
+            if (serial) processScannedSerial(serial);
+            $(this).val(''); 
         }
     });
 
-    // 3. Logic ẩn/hiện địa chỉ giao hàng (Tương lai mở rộng)
+    $('#btnSearchRight').on('click', function(e) {
+        e.preventDefault();
+        let serial = $('#posSerialSearch').val().trim();
+        if (serial) processScannedSerial(serial);
+        $('#posSerialSearch').val('');
+        $('#posSerialSearch').focus(); 
+    });
+
+    // 3. Logic ẩn/hiện phương thức giao hàng
     $('#deliveryMethod').change(function() {
+        toggleShippingFee(); 
         if ($(this).val() === 'SHIPPING') {
-            $('#destinationDiv').show();
             $('#noteDiv').removeClass('col-md-8').addClass('col-md-12 mt-2');
         } else {
-            $('#destinationDiv').hide();
             document.querySelector('input[name="destination"]').value = '';
             $('#noteDiv').removeClass('col-md-12 mt-2').addClass('col-md-8');
         }
     });
-
-    // 4. Xử lý sự kiện cho nút Kính lúp bên phải
-    $('#btnSearchRight').on('mousedown', function(e) {
-        e.preventDefault(); 
-        let isOpen = $('.select2-dropdown').length > 0; 
-        if (isOpen) {
-            let highlightedOption = $('.select2-results__option--highlighted');
-            if (highlightedOption.length > 0) {
-                highlightedOption.trigger('mouseup');
-            }
-        } else {
-            $('#posProductSearch').select2('open');
-        }
-    });
 });
 
-// Hàm đưa sản phẩm từ thanh Search xuống Giỏ hàng
-function addProductToCart(optionEl) {
+// Hàm gọi API Backend để kiểm tra mã Serial
+function processScannedSerial(serial) {
+    if (document.querySelector(`input[value="${serial}"]`)) {
+        alert("Lỗi: Mã Serial '" + serial + "' đã được quét trong giỏ hàng!");
+        return;
+    }
+
+    fetch('/sales/api/scan-serial?serial=' + encodeURIComponent(serial))
+        .then(response => {
+            if (!response.ok) return response.text().then(text => { throw new Error(text) });
+            return response.json();
+        })
+        .then(data => {
+            addProductToCart(data); 
+        })
+        .catch(err => {
+            alert(err.message);
+        });
+}
+
+// Đẩy dữ liệu xuống bảng
+function addProductToCart(data) {
     let tbody = document.getElementById('salesItemsBody');
     let emptyRow = document.getElementById('emptyCartRow');
     if (emptyRow) emptyRow.remove();
 
-    let id = optionEl.val();
-    let name = optionEl.attr('data-name');
-    let sku = optionEl.attr('data-sku');
-    let unit = optionEl.attr('data-unit') || '-';
-    let price = parseFloat(optionEl.attr('data-price')) || 0;
-    let stockAttr = optionEl.attr('data-stock');
-    let stock = stockAttr ? parseInt(stockAttr, 10) : 0;
-    if (isNaN(stock)) stock = 0;
-    // A. KIỂM TRA: Nếu sản phẩm đã có trong bảng, chỉ cần tăng số lượng lên +1
-    let existingInput = document.querySelector(`input[data-prod-id="${id}"]`);
+    let existingInput = document.querySelector(`input[data-prod-id="${data.productId}"]`);
+    
     if (existingInput) {
         let tr = existingInput.closest('tr');
         let qtyInput = tr.querySelector('.qty-input');
         qtyInput.value = parseInt(qtyInput.value) + 1;
         
-        // Cảnh báo nếu bán vượt quá tồn kho (Nhưng vẫn cho bán vì có thể chưa nhập kịp lên phần mềm)
-        if (parseInt(qtyInput.value) > stock) {
-            qtyInput.classList.add('border-danger', 'text-danger');
-        }
+        let serialContainer = tr.querySelector('.serial-container');
+        serialContainer.innerHTML += `<input type="hidden" name="scannedSerials" value="${data.serial}" />`;
+        serialContainer.innerHTML += `<span class="badge bg-secondary me-1 mt-1">${data.serial}</span>`;
         
-        triggerInputEvent(qtyInput);
-        return;
+        triggerInputEvent(qtyInput); 
+        return; 
     }
-
-    // B. NẾU CHƯA CÓ: Tạo dòng HTML mới
-    let stockHtml = stock > 0 ? `<span class="text-success fw-bold">${stock}</span>` : `<span class="text-danger fw-bold">0</span>`;
 
     let tr = document.createElement('tr');
     tr.className = 'item-row align-middle text-center';
     tr.innerHTML = `
         <td class="stt-cell text-muted fw-semibold"></td>
         <td class="text-start">
-            <div class="fw-bold text-primary">${name}</div>
-            <small class="text-muted">SKU: ${sku} | ĐVT: ${unit}</small>
-            <input type="hidden" name="orderDetails[${rowIndex}].product.id" data-prod-id="${id}" value="${id}" />
+            <div class="fw-bold text-primary">${data.productName}</div>
+            <small class="text-muted">SKU: ${data.sku} | ĐVT: ${data.unit}</small>
+            <div class="serial-container mt-1">
+                <input type="hidden" name="orderDetails[${rowIndex}].product.id" data-prod-id="${data.productId}" value="${data.productId}" />
+                <input type="hidden" name="scannedSerials" value="${data.serial}" />
+                <span class="badge bg-secondary me-1 mt-1">${data.serial}</span>
+            </div>
         </td>
-        <td style="font-size: 0.9rem;">${stockHtml}</td>
+        <td class="text-success"><i class="bi bi-check-circle-fill"></i> Có sẵn</td>
         <td>
-            <input type="number" name="orderDetails[${rowIndex}].quantity" class="form-control form-control-sm text-center fw-bold qty-input" min="1" value="1" required />
+            <input type="number" name="orderDetails[${rowIndex}].quantity" class="form-control form-control-sm text-center fw-bold qty-input bg-light" min="1" value="1" readonly />
         </td>
         <td>
-            <input type="number" name="orderDetails[${rowIndex}].unitPrice" class="form-control form-control-sm text-end price-input" value="${price}" required />
+            <input type="number" name="orderDetails[${rowIndex}].unitPrice" class="form-control form-control-sm text-end price-input" value="${data.price}" required />
         </td>
         <td>
             <input type="number" class="form-control form-control-sm text-center discount-percent-input" min="0" max="100" step="0.1" value="0" />
@@ -110,26 +105,23 @@ function addProductToCart(optionEl) {
         <td>
             <input type="number" name="orderDetails[${rowIndex}].discountAmount" class="form-control form-control-sm text-end bg-light discount-amount-input" value="0" readonly tabindex="-1" />
         </td>
-        <td class="text-end fw-bold fs-6 text-success row-total">${price.toLocaleString('vi-VN')} đ</td>
+        <td class="text-end fw-bold fs-6 text-success row-total">${data.price.toLocaleString('vi-VN')} đ</td>
         <td>
-            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeSalesRow(this)"><i class="bi bi-x-lg"></i></button>
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeSalesRow(this)"><i class="bi bi-trash"></i></button>
         </td>
     `;
     
     tbody.appendChild(tr);
     rowIndex++;
-    
     updateRowNumbers();
     bindRowEvents(tr);
     calculateGrandTotal();
 }
 
-// Tính lại STT cho đẹp
 function updateRowNumbers() {
     let rows = document.querySelectorAll('#salesItemsBody .item-row');
     rows.forEach((row, index) => {
         row.querySelector('.stt-cell').textContent = index + 1;
-        // Logic cập nhật lại mảng orderDetails[index] nếu lỡ bị xóa dòng giữa chừng có thể phát triển thêm ở đây
     });
 }
 
@@ -140,7 +132,7 @@ function removeSalesRow(btn) {
         tbody.innerHTML = `
             <tr id="emptyCartRow">
                 <td colspan="9" class="text-center py-5 text-muted">
-                    <i class="bi bi-cart-x fs-1 d-block mb-2"></i> Chưa có sản phẩm nào.
+                    <i class="bi bi-upc-scan fs-1 d-block mb-2"></i> Chưa có sản phẩm nào. Vui lòng quét mã Serial để tiếp tục!
                 </td>
             </tr>`;
     } else {
@@ -149,7 +141,7 @@ function removeSalesRow(btn) {
     calculateGrandTotal();
 }
 
-// Bắt các sự kiện tính toán tiền giống hệt bản Purchase
+// 🚀 ĐÃ XÓA SẠCH VALIDATE TỒN KHO ẢO Ở ĐÂY
 function bindRowEvents(row) {
     const qtyInput = row.querySelector('.qty-input');
     const priceInput = row.querySelector('.price-input');
@@ -192,7 +184,15 @@ function calculateGrandTotal() {
         let discount = parseFloat(row.querySelector('.discount-amount-input').value) || 0;
         grandTotal += (qty * price) - discount;
     });
+
+    let method = document.getElementById('deliveryMethod').value;
+    if (method === 'SHIPPING') {
+        let shippingFee = parseFloat(document.getElementById('shippingFeeInput').value) || 0;
+        grandTotal += shippingFee;
+    }
+
     document.getElementById('grandTotal').textContent = grandTotal.toLocaleString('vi-VN') + ' đ';
+    if (typeof calculateCOD === 'function') calculateCOD();
 }
 
 function triggerInputEvent(element) {
@@ -200,10 +200,46 @@ function triggerInputEvent(element) {
     element.dispatchEvent(event);
 }
 
+// 🚀 ĐÃ BỎ LỚP CHẶN SUBMIT CŨ 
 function submitSalesOrder() {
     if (document.querySelectorAll('#salesItemsBody .item-row').length === 0) {
-        alert("Vui lòng quét chọn ít nhất 1 sản phẩm để tạo đơn hàng!");
+        alert("Vui lòng quét ít nhất 1 mã Serial để chốt đơn!");
         return;
     }
     document.getElementById('salesForm').submit();
+}
+
+function toggleShippingFee() {
+    const method = document.getElementById('deliveryMethod').value;
+    const feeDiv = document.getElementById('shippingFeeDiv');
+    const destDiv = document.getElementById('destinationDiv'); 
+    const codDiv = document.getElementById('codDiv'); 
+    
+    if (method === 'SHIPPING') {
+        feeDiv.style.display = 'block';
+        destDiv.style.display = 'block';
+        codDiv.classList.remove('d-none');
+        codDiv.classList.add('d-flex'); 
+    } else {
+        feeDiv.style.display = 'none';
+        destDiv.style.display = 'none';
+        codDiv.classList.remove('d-flex');
+        codDiv.classList.add('d-none'); 
+        document.getElementById('shippingFeeInput').value = 0; 
+    }
+    calculateGrandTotal(); 
+}
+
+function calculateCOD() {
+    const method = document.getElementById('deliveryMethod').value;
+    if (method !== 'SHIPPING') return;
+
+    let grandTotalText = document.getElementById('grandTotal').textContent;
+    let grandTotal = parseFloat(grandTotalText.replace(/\./g, '').replace(' đ', '')) || 0;
+    let paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+    
+    let cod = grandTotal - paidAmount;
+    if (cod < 0) cod = 0;
+
+    document.getElementById('codAmount').value = cod;
 }

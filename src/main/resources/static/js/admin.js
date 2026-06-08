@@ -7,20 +7,27 @@ document.addEventListener('click', event => {
     }
 });
 
-// 2. Giữ trạng thái Dropdown (Chỉ cho phép 1 menu mở) và Highlight
+// 2. Giữ trạng thái Dropdown và Highlight
 document.addEventListener("DOMContentLoaded", function () {
     const collapses = document.querySelectorAll('.sidebar-dropdown');
     const currentUrl = window.location.pathname;
 
-    // --- PHẦN A: XỬ LÝ HIGHLIGHT & TỰ ĐỘNG MỞ KHI LOAD TRANG ---
+    // --- FIX LỖI: RESET TRẠNG THÁI KHI Ở TRANG DASHBOARD ---
+    // Lưu ý: Thay đổi '/', '/dashboard' thành URL thực tế trang Dashboard của bạn
+    const isDashboard = currentUrl === '/' || currentUrl === '/dashboard' || currentUrl.endsWith('index.html');
+    if (isDashboard) {
+        localStorage.removeItem('sidebar_active_dropdown');
+    }
+
+    // --- PHẦN A: XỬ LÝ HIGHLIGHT & TỰ ĐỘNG MỞ KHI LOAD TRANG (Có link khớp) ---
     const sidebarLinks = document.querySelectorAll('.sidebar-dropdown .sidebar-link');
     let isSubmenuActive = false;
 
     sidebarLinks.forEach(link => {
         const href = link.getAttribute('href');
         
-        // Nếu URL của link trùng khớp với URL trang hiện tại
-        if (href !== '#' && currentUrl.includes(href)) {
+        // Thêm điều kiện href !== '/' để tránh lỗi includes() nhận diện nhầm tất cả các link
+        if (href && href !== '#' && href !== '/' && currentUrl.includes(href)) {
             isSubmenuActive = true;
             link.style.color = "#fff"; 
             link.style.fontWeight = "bold";
@@ -41,12 +48,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // --- PHẦN B: PHỤC HỒI TRẠNG THÁI NẾU KHÔNG CÓ MENU NÀO ACTIVE TỪ URL ---
+    // --- PHẦN B: PHỤC HỒI TRẠNG THÁI TỪ LOCALSTORAGE ---
     collapses.forEach(collapse => {
         const id = collapse.id;
         
-        // Chỉ mở theo LocalStorage nếu trang hiện tại không có submenu nào được highlight ở Phần A
-        if (!isSubmenuActive && localStorage.getItem('sidebar_active_dropdown') === id) {
+        // Chỉ mở khi: Không ở trang dashboard VÀ không có menu nào được highlight ở Phần A VÀ có lưu trong storage
+        if (!isDashboard && !isSubmenuActive && localStorage.getItem('sidebar_active_dropdown') === id) {
             collapse.classList.add('show');
             const toggleBtn = document.querySelector(`[data-bs-target="#${id}"]`);
             if (toggleBtn) {
@@ -57,10 +64,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Lắng nghe sự kiện KHI BẮT ĐẦU MỞ menu (show.bs.collapse)
         collapse.addEventListener('show.bs.collapse', function () {
-            // Lưu ID của menu đang mở vào LocalStorage
             localStorage.setItem('sidebar_active_dropdown', this.id);
 
-            // Tìm tất cả các menu khác và ép chúng đóng lại
             collapses.forEach(otherCollapse => {
                 if (otherCollapse !== collapse && otherCollapse.classList.contains('show')) {
                     // Dùng API của Bootstrap 5 để đóng an toàn (kèm theo hiệu ứng)
@@ -80,17 +85,15 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Lắng nghe sự kiện KHI MENU ĐÓNG (bởi người dùng tự bấm)
+        // Lắng nghe sự kiện KHI MENU ĐÓNG
         collapse.addEventListener('hidden.bs.collapse', function () {
-            // Nếu menu vừa đóng chính là menu đang lưu trong LocalStorage thì xóa đi
             if (localStorage.getItem('sidebar_active_dropdown') === this.id) {
                 localStorage.removeItem('sidebar_active_dropdown');
             }
         });
     });
 
-    // --- PHẦN C: XÓA TRẠNG THÁI NẾU BẤM VÀO MENU ĐƠN ---
-    // (Xử lý trường hợp người dùng bấm vào các mục không có dropdown, ví dụ: Dashboard, thì thu hết các dropdown cũ lại)
+    // --- PHẦN C: XÓA TRẠNG THÁI NẾU CLICK VÀO MENU ĐƠN ---
     const singleLinks = document.querySelectorAll('.sidebar-item > a:not([data-bs-toggle="collapse"])');
     singleLinks.forEach(singleLink => {
         singleLink.addEventListener('click', () => {

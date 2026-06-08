@@ -7,6 +7,8 @@ import com.example.demo.entity.Order.PaymentStatus;
 import com.example.demo.entity.Order.PurchaseOrder;
 import com.example.demo.entity.Product.ImportBatch;
 import com.example.demo.entity.Product.Product;
+import com.example.demo.entity.User.Employee;
+import com.example.demo.repository.EmployeeRepository;
 import com.example.demo.repository.ImportBatchRepository;
 import com.example.demo.repository.OrderDetailRepository;
 import com.example.demo.repository.ProductRepository;
@@ -14,6 +16,8 @@ import com.example.demo.repository.PurchaseOrderRepository;
 import com.example.demo.repository.SupplierRepository;
 
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,6 +37,8 @@ public class PurchaseOrderService {
     private final ImportBatchRepository importBatchRepository;
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
+
+    private final EmployeeRepository employeeRepository;
 
     public PurchaseOrder getPurchaseOrderById(Long id) {
         return purchaseOrderRepository.findById(id)
@@ -129,8 +135,8 @@ public class PurchaseOrderService {
                 BigDecimal netUnitPrice = lineTotal.divide(BigDecimal.valueOf(actualQty), 2,
                         java.math.RoundingMode.HALF_UP);
                 batch.setPrice(netUnitPrice);
-                batch.setQuantityOnHand(actualQty);
-                batch.setQuantityAvailable(actualQty);
+
+                batch.setQuantity(0);
 
                 // Tính giá MAC (Moving Average Cost) và cập nhật vào Product
                 Product product = detail.getProduct();
@@ -210,6 +216,15 @@ public class PurchaseOrderService {
         }
         po.setTotalPurchaseAmount(totalOrderAmount);
 
+        // 1. Lấy username từ phiên đăng nhập hiện tại của Spring Security
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        // 2. Truy vấn ra thực thể Employee từ Database
+        Employee currentEmployee = employeeRepository.findByUser_Username(currentUsername)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Lỗi bảo mật: Không tìm thấy hồ sơ Nhân viên của tài khoản này!"));
+
+        po.setEmployee(currentEmployee);
         // 4. Lưu thông tin
         purchaseOrderRepository.save(po);
         orderDetailRepository.saveAll(orderDetails);

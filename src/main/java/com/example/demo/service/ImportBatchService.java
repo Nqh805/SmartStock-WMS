@@ -34,7 +34,6 @@ public class ImportBatchService {
         Sort sort = Sort.by("importDate").descending().and(Sort.by("id").descending());
         Pageable pageable = PageRequest.of(pageNo - 1, pageSize, sort);
 
-        // Chuẩn hóa keyword
         String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
 
         return importBatchRepository.searchBatches(searchKeyword, pageable);
@@ -42,44 +41,52 @@ public class ImportBatchService {
 
     public Map<Long, Long> getScannedCountsForBatches(List<ImportBatch> batches) {
         Map<Long, Long> counts = new java.util.HashMap<>();
-        for (ImportBatch batch : batches) {
-            long count = productItemRepository.countByImportBatchId(batch.getId());
-            counts.put(batch.getId(), count);
+        if (batches == null || batches.isEmpty()) {
+            return counts;
         }
+        List<Long> batchIds = batches.stream()
+                .map(ImportBatch::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+        List<Object[]> results = productItemRepository.countItemsByBatchIds(batchIds);
+
+        for (ImportBatch batch : batches) {
+            counts.put(batch.getId(), 0L);
+        }
+
+        for (Object[] result : results) {
+            Long batchId = (Long) result[0];
+            Long count = (Long) result[1];
+            counts.put(batchId, count);
+        }
+
         return counts;
     }
 
-    // putaway
     @Transactional
     public void putawayBatch(Long batchId, String locationCode) {
-        // 1. Tìm lô hàng cần xếp
         ImportBatch batch = importBatchRepository.findById(batchId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lô hàng tương ứng!"));
 
-        // 2. Tìm vị trí kệ từ mã quét được
         WareHouseLocation location = wareHouseLocationRepository.findByLocationCode(locationCode.trim())
                 .orElseThrow(() -> new IllegalArgumentException("Mã vị trí kệ không hợp lệ hoặc không tồn tại!"));
 
-        // 3. VALIDATE: Kệ quét được phải thuộc về đúng Kho mà lô hàng đang đứng
         if (!location.getWareHouse().getId().equals(batch.getWareHouse().getId())) {
             throw new IllegalArgumentException("Lỗi vị trí: Kệ này nằm ở Kho '" + location.getWareHouse().getName()
                     + "', trong khi lô hàng này đang ở Kho '" + batch.getWareHouse().getName() + "'!");
         }
 
-        // 4. Cập nhật vị trí kệ cho lô hàng
         batch.setLocation(location);
         importBatchRepository.save(batch);
 
         if (batch.getPurchaseOrder() != null) {
             orderDetailRepository.findByImportBatchId(batch.getId()).ifPresent(detail -> {
                 if (batch.getLocation() != null) {
-                    // Nếu lô hàng đã có vị trí -> Cập nhật số lượng đã cất = số lượng thực nhận
                     detail.setPutawayQuantity(detail.getActualQuantity());
                 } else {
-                    // Nếu rút lô hàng khỏi kệ (Location = null) -> Trả số lượng đã cất về 0
                     detail.setPutawayQuantity(0);
                 }
-                orderDetailRepository.save(detail); // Lưu lại vào DB
+                orderDetailRepository.save(detail);
             });
         }
     }
@@ -89,14 +96,17 @@ public class ImportBatchService {
         ImportBatch batch = importBatchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lô hàng này trên hệ thống!"));
 
+        // Đếm TỔNG LỊCH SỬ số lượng mã đã nạp để kiểm tra xem có vượt Đơn nhập không
         long alreadyScannedCount = productItemRepository.countByImportBatchId(batchId);
 
-        if (alreadyScannedCount + serials.size() > batch.getQuantityOnHand()) {
-            throw new RuntimeException("Lỗi: Tổng số mã Serial nạp vào vượt quá số lượng tồn kho của lô hàng!");
+        int maxAllowed = batch.getMaxAllowed();
+
+        if (alreadyScannedCount + serials.size() > maxAllowed) {
+            throw new RuntimeException("Lỗi: Tổng số mã Serial nạp vào (" + (alreadyScannedCount + serials.size())
+                    + ") vượt quá số lượng thực nhận từ đơn mua hàng gốc (" + maxAllowed + ")!");
         }
 
         List<ProductItem> itemsToSave = new ArrayList<>();
-
         for (String serial : serials) {
             if (productItemRepository.existsBySerialNumber(serial)) {
                 throw new RuntimeException("Mã Serial/IMEI '" + serial + "' đã tồn tại trên hệ thống!");
@@ -109,5 +119,10 @@ public class ImportBatchService {
             itemsToSave.add(item);
         }
         productItemRepository.saveAll(itemsToSave);
+
+        // Cập nhật số lượng đã quét vào database ngay
+        long totalScannedCount = alreadyScannedCount + serials.size();
+        batch.setQuantity((int) totalScannedCount);
+        importBatchRepository.save(batch);
     }
 }

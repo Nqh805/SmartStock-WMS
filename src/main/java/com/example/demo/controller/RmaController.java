@@ -139,15 +139,16 @@ public class RmaController {
         }
     }
 
-    // 🚀 BỔ SUNG API CẬP NHẬT KẾT QUẢ BẢO HÀNH
     @PostMapping("/warranties/update-status")
     public String updateStatus(@RequestParam("id") Long id,
             @RequestParam("status") RmaTicket.RmaStatus status,
             @RequestParam(value = "solution", required = false) String solution,
+            @RequestParam(value = "newSerial", required = false) String newSerial,
             RedirectAttributes redirectAttributes) {
         try {
-            rmaService.updateRmaStatus(id, status, solution);
-            redirectAttributes.addFlashAttribute("successMessage", "Đã lưu kết quả xử lý bảo hành thành công!");
+            // Truyền thẳng các tham số xuống Service xử lý
+            rmaService.updateRmaStatusWithSwap(id, status, solution, newSerial);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã chốt kết quả và trả máy bảo hành thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
         }

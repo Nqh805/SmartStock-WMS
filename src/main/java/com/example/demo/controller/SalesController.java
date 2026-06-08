@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.OrderDetailDTO;
 import com.example.demo.entity.Order.SalesOrder; // Import class tương ứng
+import com.example.demo.repository.ProductItemRepository;
 import com.example.demo.service.SalesOrderService;
 import com.example.demo.service.OrderDetailService;
 
@@ -25,8 +26,8 @@ public class SalesController {
     private final SalesOrderService salesOrderService;
     private final OrderDetailService orderDetailService;
     private final ProductService productService;
+    private final ProductItemRepository productItemRepository;
 
-    // Xem danh sách đơn bán hàng
     // Xem danh sách đơn bán hàng
     @GetMapping("/view")
     public String viewSalesOrders(
@@ -77,18 +78,18 @@ public class SalesController {
 
     @PostMapping("/add")
     public String createNewSalesOrder(@ModelAttribute("salesOrder") SalesOrder salesOrder,
+            @RequestParam(value = "scannedSerials", required = false) List<String> scannedSerials,
             Model model,
             RedirectAttributes redirectAttributes) {
         try {
-            salesOrderService.createNewSalesOrder(salesOrder);
-            redirectAttributes.addFlashAttribute("successMessage", "Tạo đơn bán hàng thành công!");
+            salesOrderService.createNewSalesOrder(salesOrder, scannedSerials);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Tạo đơn bán hàng và xuất kho thành công!");
             return "redirect:/sales/view";
         } catch (IllegalArgumentException e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("customers", salesOrderService.getAllCustomers());
             model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
-
-            // SỬA DÒNG NÀY (Phục hồi dữ liệu nếu có lỗi validate):
             model.addAttribute("products", productService.getAllProductsWithInventory());
             return "add_sales";
 
@@ -96,10 +97,37 @@ public class SalesController {
             model.addAttribute("errorMessage", "Đã xảy ra lỗi hệ thống khi chốt đơn: " + e.getMessage());
             model.addAttribute("customers", salesOrderService.getAllCustomers());
             model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
-
-            // SỬA DÒNG NÀY (Phục hồi dữ liệu nếu có lỗi hệ thống):
             model.addAttribute("products", productService.getAllProductsWithInventory());
             return "add_sales";
+        }
+    }
+
+    // 🚀 2. BỔ SUNG API CHO SÚNG QUÉT MÃ GỌI VÀO
+    @GetMapping("/api/scan-serial")
+    @ResponseBody
+    public ResponseEntity<?> scanSerialForSale(@RequestParam("serial") String serial) {
+        try {
+            com.example.demo.entity.Product.ProductItem item = productItemRepository.findBySerialNumber(serial.trim())
+                    .orElseThrow(() -> new IllegalArgumentException("Mã Serial '" + serial + "' không tồn tại!"));
+
+            if (item.getStatus() != com.example.demo.entity.Product.ItemStatus.IN_STOCK) {
+                throw new IllegalStateException("Sản phẩm mang mã '" + serial + "' đang không ở trong Kho!");
+            }
+
+            // Đóng gói thông tin sản phẩm trả về cho Javascript
+            java.util.Map<String, Object> response = new java.util.HashMap<>();
+            response.put("serial", item.getSerialNumber());
+            response.put("productId", item.getProduct().getId());
+            response.put("productName", item.getProduct().getName());
+            response.put("sku", item.getProduct().getSkuCode());
+            response.put("unit", item.getProduct().getUnit() != null ? item.getProduct().getUnit() : "-");
+            response.put("price",
+                    item.getProduct().getFinalSellingPrice() != null ? item.getProduct().getFinalSellingPrice()
+                            : item.getProduct().getBasePrice());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

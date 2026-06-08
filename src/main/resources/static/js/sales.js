@@ -4,7 +4,20 @@ function openSalesDetailModal(row) {
 
     // 1. Đổ dữ liệu các trường thông tin chung lên Modal
     document.getElementById('detailSoCode').textContent = row.getAttribute('data-code');
+    const creatorEl = document.getElementById('detailSoCreator');
+    if (creatorEl) creatorEl.textContent = row.getAttribute('data-creator') || 'Chưa cập nhật';
     document.getElementById('detailSoCustomer').textContent = row.getAttribute('data-customer');
+    // 🚀 BẮT ĐẦU: XỬ LÝ HÌNH THỨC MUA HÀNG
+    let deliveryMethod = row.getAttribute('data-delivery');
+    let deliveryHtml = '';
+    if (deliveryMethod === 'SHIPPING') {
+        deliveryHtml = '<span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>Giao tận nơi</span>';
+    }
+    else {
+        deliveryHtml = '<span class="badge bg-secondary"><i class="bi bi-shop me-1"></i>Tại quầy</span>';
+    }
+    document.getElementById('detailSoDelivery').innerHTML = deliveryHtml;
+    // 🚀 KẾT THÚC
     document.getElementById('detailSoWarehouse').textContent = row.getAttribute('data-warehouse');
     document.getElementById('detailSoCreated').textContent = row.getAttribute('data-created');
     document.getElementById('detailSoNote').textContent = row.getAttribute('data-note') || 'Không có ghi chú';
@@ -159,5 +172,36 @@ function submitPayment() {
     .catch(error => {
         errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${error.message}`;
         errorDiv.classList.remove('d-none');
+    });
+}
+
+function submitExportStockScan(orderId, scannedSerialsArray) {
+    if (!scannedSerialsArray || scannedSerialsArray.length === 0) {
+        alert("Vui lòng quét ít nhất 1 mã Serial/IMEI để xuất kho!");
+        return;
+    }
+
+    fetch('/sales/api/export-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            orderId: orderId,
+            serials: scannedSerialsArray
+        })
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err);
+        }
+        alert('✅ Xuất kho thành công! Các mã máy đã được cập nhật trạng thái Bán.');
+        window.location.reload();
+    })
+    .catch(error => {
+        alert('❌ Lỗi xuất kho:\n' + error.message);
+    })
+    .finally(() => {
+        // Trả lại UI nút bấm
+        // btn.innerHTML = '<i class="bi bi-box-arrow-right me-1"></i> Xác nhận Xuất kho';
     });
 }

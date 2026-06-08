@@ -16,15 +16,26 @@ import com.example.demo.entity.Product.ProductStatus;
 import com.example.demo.repository.ImportBatchRepository;
 import com.example.demo.repository.ProductRepository;
 
-//service: chua logic xu ly du lieu, goi repository de tuong tac database, tra ve ket qua cho controller
 @Service
 public class ProductService {
 
     @Autowired
     private ProductRepository productRepository;
 
+    // 🚀 BỔ SUNG LẠI IMPORT BATCH REPO ĐỂ TÍNH TỔNG TỒN VẬT LÝ
     @Autowired
     private ImportBatchRepository importBatchRepository;
+
+    // ==========================================
+    // 🚀 HÀM DÙNG CHUNG: LẤY TỒN KHO & CẬP NHẬT TRẠNG THÁI
+    // ==========================================
+    private void loadInventoryAndStatus(Product p) {
+        Integer totalOnHand = importBatchRepository.sumQuantityByProductId(p.getId());
+        int qty = totalOnHand != null ? totalOnHand : 0;
+
+        p.setTotalQuantity(qty);
+        updateStatusIfNeeded(p, qty);
+    }
 
     // tim va tra ve danh sach sort theo id giam dan
     public Page<Product> findProduct(String keyword, Long parentId, Long childId,
@@ -46,12 +57,18 @@ public class ProductService {
             sort = Sort.by(Sort.Direction.DESC, "id");
         }
 
-        // Khởi tạo Pageable
         int pageSize = 10;
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, sort);
 
-        // Gọi Repository trả về Page
-        return productRepository.searchProducts(cleanKeyword, pId, cId, minPrice, maxPrice, pageable);
+        Page<Product> productPage = productRepository.searchProducts(cleanKeyword, pId, cId, minPrice, maxPrice,
+                pageable);
+
+        // 🚀 GỌI HÀM DÙNG CHUNG CỰC KỲ GỌN GÀNG
+        for (Product p : productPage.getContent()) {
+            loadInventoryAndStatus(p);
+        }
+
+        return productPage;
     }
 
     public Product getById(Long id) {
@@ -65,13 +82,9 @@ public class ProductService {
 
         try {
             String projectPath = "src/main/resources/static/asset/uploads/";
-
-            // luu vao target
             String buildPath = "target/classes/static/asset/uploads/";
-
             String fileName = imageFile.getOriginalFilename();
 
-            // Tạo thư mục nếu chưa có
             new java.io.File(projectPath).mkdirs();
             new java.io.File(buildPath).mkdirs();
 
@@ -90,12 +103,10 @@ public class ProductService {
         }
     }
 
-    // Phương thức lõi: Tính số kiểm tra cho 12 chữ số đầu tiên
     private int calculateEAN13CheckDigit(String code12) {
         int sum = 0;
         for (int i = 0; i < 12; i++) {
             int digit = Character.getNumericValue(code12.charAt(i));
-            // Vị trí lẻ (1, 3, 5...) nhân 1, vị trí chẵn (2, 4, 6...) nhân 3
             sum += (i % 2 == 0) ? digit : digit * 3;
         }
         int mod = sum % 10;
@@ -113,9 +124,8 @@ public class ProductService {
         return expectedCheckDigit == actualCheckDigit;
     }
 
-    // 2. Tái sử dụng để Sinh mã (EAN-13 bắt đầu bằng 20 - mã nội bộ)
     private String generateEAN13() {
-        StringBuilder code12 = new StringBuilder("20"); // Tiền tố mã nội bộ
+        StringBuilder code12 = new StringBuilder("20");
         Random random = new Random();
         for (int i = 0; i < 10; i++) {
             code12.append(random.nextInt(10));
@@ -175,7 +185,6 @@ public class ProductService {
         }
     }
 
-    // luu san pham
     public Product saveProduct(Product product, MultipartFile imageFile) {
         validateUniqueness(product.getSkuCode(), product.getBarCode(), null);
 
@@ -238,15 +247,15 @@ public class ProductService {
         }
     }
 
-    // xu ly so luon ton kho tong
+    // xu ly so luong ton kho tong
     public List<Product> getAllProductsWithInventory() {
         List<Product> products = productRepository.findAll();
+
+        // 🚀 GỌI HÀM DÙNG CHUNG
         for (Product p : products) {
-            Integer total = importBatchRepository.sumQuantityByProductId(p.getId());
-            int qty = total != null ? total : 0;
-            p.setTotalQuantity(qty); // set vào trường @Transient
-            updateStatusIfNeeded(p, qty);
+            loadInventoryAndStatus(p);
         }
+
         return products;
     }
 }

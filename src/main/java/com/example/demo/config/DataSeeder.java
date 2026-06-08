@@ -11,8 +11,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-
 @Component
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
@@ -27,7 +25,7 @@ public class DataSeeder implements CommandLineRunner {
 
         // 1. TẠO 3 ROLE (NẾU CHƯA CÓ)
         Role managerRole = createRoleIfNotFound("MANAGER", "Thủ kho (Toàn quyền)");
-        Role inspectorRole = createRoleIfNotFound("INSPECTOR", "Kiểm kho (Quản lý hàng, duyệt nhập)");
+        Role inspectorRole = createRoleIfNotFound("INSPECTOR", "Kiểm kho (Quản lý hàng, duyệt nhập, thanh toán)");
         Role staffRole = createRoleIfNotFound("STAFF", "Nhân viên kho (Xem và kiểm kê)");
 
         // 2. TẠO TÀI KHOẢN ADMIN ĐẦU TIÊN (NẾU CHƯA CÓ)

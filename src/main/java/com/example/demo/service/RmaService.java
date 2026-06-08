@@ -90,4 +90,45 @@ public class RmaService {
             productItemRepository.save(item);
         }
     }
+
+    @Transactional
+    public void updateRmaStatusWithSwap(Long id, RmaTicket.RmaStatus newStatus, String solution, String newSerial) {
+        RmaTicket ticket = rmaTicketRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu RMA mang mã ID: " + id));
+
+        // 1. Cập nhật trạng thái phiếu (Mặc định là COMPLETED gửi từ form ẩn) và ghi
+        // chú giải pháp
+        ticket.setStatus(newStatus);
+        if (solution != null && !solution.trim().isEmpty()) {
+            ticket.setWarrantySolution(solution.trim());
+        }
+
+        // 2. Xử lý lưu vết máy đổi mới nếu nhân viên có quét mã
+        if (newSerial != null && !newSerial.trim().isEmpty()) {
+            String cleanNewSerial = newSerial.trim();
+
+            // Lớp chặn an toàn: Kiểm tra trùng lặp trên hệ thống
+            if (productItemRepository.existsBySerialNumber(cleanNewSerial)) {
+                throw new IllegalArgumentException(
+                        "Lỗi: Mã Serial mới '" + cleanNewSerial + "' đã tồn tại trên hệ thống từ trước!");
+            }
+            ticket.setReplacementSerialNumber(cleanNewSerial);
+
+            // xử lý thông tin máy bảo hành mới
+            ProductItem oldItem = productItemRepository.findBySerialNumber(ticket.getSerialNumber())
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thiết bị lỗi gốc trong DB!"));
+
+            ProductItem newItem = new ProductItem();
+            newItem.setSerialNumber(cleanNewSerial);
+            newItem.setProduct(oldItem.getProduct()); // Cùng dòng sản phẩm (Ví dụ: iPhone 15)
+            newItem.setStatus(com.example.demo.entity.Product.ItemStatus.SOLD);
+
+            // lưu lại thông tin đơn bán của máy cũ
+            newItem.setSalesOrder(oldItem.getSalesOrder());
+
+            productItemRepository.save(newItem);
+        }
+
+        rmaTicketRepository.save(ticket);
+    }
 }
