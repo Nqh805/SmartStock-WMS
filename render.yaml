@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: wms-erp-backend
+    runtime: java
+    buildCommand: chmod +x mvnw && ./mvnw clean package -DskipTests
+    startCommand: java -jar target/demo-0.0.1-SNAPSHOT.jar
+    envVars:
+      - key: JAVA_VERSION
+        value: 21
