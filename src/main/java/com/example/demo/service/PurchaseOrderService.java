@@ -185,7 +185,6 @@ public class PurchaseOrderService {
                         "Lỗi nghiệp vụ: Mã đơn '" + po.getCode().trim() + "' đã tồn tại, vui lòng chọn mã khác!");
             }
         }
-
         // danh sách sản phẩm không được trống
         if (orderDetails == null || orderDetails.isEmpty()) {
             throw new IllegalArgumentException("Lỗi nghiệp vụ: Đơn mua hàng bắt buộc phải có ít nhất một mặt hàng!");
@@ -209,6 +208,17 @@ public class PurchaseOrderService {
         for (OrderDetail detail : orderDetails) {
             detail.setOrderHeader(po); // Quan trọng: Phải map khóa ngoại về Order header
 
+            // KIỂM TRA LẠI: Refresh product status từ DB để chắc chắn không có race
+            // condition
+            Product refreshedProduct = productRepository.findById(detail.getProduct().getId())
+                    .orElse(detail.getProduct());
+            if (refreshedProduct.getStatus() == com.example.demo.entity.Product.ProductStatus.INACTIVE) {
+                String productName = refreshedProduct.getName() != null ? refreshedProduct.getName() : "Không xác định";
+                throw new IllegalArgumentException("Lỗi nghiệp vụ: Sản phẩm '" + productName
+                        + "' đã chuyển sang trạng thái ngừng kinh doanh (INACTIVE) khi xử lý. Không thể nhập hàng!");
+            }
+            detail.setProduct(refreshedProduct);
+
             BigDecimal lineTotal = detail.getUnitPrice()
                     .multiply(BigDecimal.valueOf(detail.getQuantity()))
                     .subtract(detail.getDiscountAmount() != null ? detail.getDiscountAmount() : BigDecimal.ZERO);
@@ -225,6 +235,18 @@ public class PurchaseOrderService {
                         "Lỗi bảo mật: Không tìm thấy hồ sơ Nhân viên của tài khoản này!"));
 
         po.setEmployee(currentEmployee);
+
+        // KIỂM TRA FINAL: Đảm bảo không có sản phẩm INACTIVE nào trong danh sách cuối
+        // cùng
+        for (OrderDetail detail : orderDetails) {
+            if (detail.getProduct().getStatus() == com.example.demo.entity.Product.ProductStatus.INACTIVE) {
+                String productName = detail.getProduct().getName() != null ? detail.getProduct().getName()
+                        : "Không xác định";
+                throw new IllegalArgumentException("[CRITICAL] Lỗi hệ thống: Sản phẩm '" + productName
+                        + "' INACTIVE được phát hiện trước khi lưu đơn hàng. Vui lòng liên hệ admin!");
+            }
+        }
+
         // 4. Lưu thông tin
         purchaseOrderRepository.save(po);
         orderDetailRepository.saveAll(orderDetails);

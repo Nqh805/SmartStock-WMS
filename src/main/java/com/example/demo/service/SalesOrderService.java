@@ -65,12 +65,9 @@ public class SalesOrderService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng mã " + id));
     }
 
-    // =========================================================================
-    // 🚀 CHỐT ĐƠN 1 CHẠM POS (Tạo đơn + Trừ Serial trực tiếp + Trừ Lô + Hoàn thành)
-    // =========================================================================
+    // CHỐT ĐƠN 1 CHẠM POS (Tạo đơn + Trừ Serial trực tiếp + Trừ Lô + Hoàn thành)
     @Transactional
     public void createNewSalesOrder(SalesOrder salesOrder, List<String> scannedSerials) {
-        // 1. Kiểm tra lớp bảo vệ đầu vào
         if (salesOrder.getOrderDetails() == null || salesOrder.getOrderDetails().isEmpty()) {
             throw new IllegalArgumentException("Không thể chốt đơn! Giỏ hàng đang trống rỗng.");
         }
@@ -82,17 +79,23 @@ public class SalesOrderService {
         salesOrder.getOrderDetails()
                 .removeIf(detail -> detail.getProduct() == null || detail.getProduct().getId() == null);
 
-        // 🚀 GIẢI PHÁP SỬA LỖI DUPLICATE ENTRY: Sinh mã SO-XXXXXXXX đúng 11 ký tự
-        // Tránh thuật toán ngày giờ cũ bị Database cắt cụt đuôi gây trùng mã sập hệ
-        // thống
+        // Sản phẩm Inactive không được phép bán
+        for (OrderDetail detail : salesOrder.getOrderDetails()) {
+            Product product = detail.getProduct();
+            if (product.getStatus() == com.example.demo.entity.Product.ProductStatus.INACTIVE) {
+                String productName = product.getName() != null ? product.getName() : "Không xác định";
+                throw new IllegalArgumentException("Lỗi nghiệp vụ: Sản phẩm '" + productName
+                        + "' đã bị ngừng bán (INACTIVE). Vui lòng loại bỏ khỏi giỏ hàng!");
+            }
+        }
+
+        // Sinh mã SO-XXXXXXXX đúng 11 ký tự
         if (salesOrder.getCode() == null || salesOrder.getCode().trim().isEmpty()) {
             int randomNum = new Random().nextInt(90000000) + 10000000; // Đảm bảo luôn ra đúng 8 chữ số
             salesOrder.setCode("SO-" + randomNum);
         }
 
         salesOrder.setConfirmed(true);
-        // Vì quét mã trực tiếp tại quầy thanh toán nên đơn hàng tự động chuyển sang
-        // COMPLETED luôn
         salesOrder.setStatus(SalesOrder.SalesStatus.COMPLETED);
 
         // Lưu vết nhân viên thu ngân thực hiện giao dịch này
@@ -118,9 +121,18 @@ public class SalesOrderService {
             }
             totalRequestedQty += requestedQty;
 
+            // KIỂM TRA LẠI: Refresh product status từ DB để chắc chắn không có race
+            // condition
+            Product refreshedProduct = productService.getById(detail.getProduct().getId());
+            if (refreshedProduct.getStatus() == com.example.demo.entity.Product.ProductStatus.INACTIVE) {
+                String productName = refreshedProduct.getName() != null ? refreshedProduct.getName() : "Không xác định";
+                throw new IllegalArgumentException("Lỗi nghiệp vụ: Sản phẩm '" + productName
+                        + "' đã bị ngừng bán (INACTIVE) khi xử lý. Vui lòng loại bỏ khỏi giỏ hàng!");
+            }
+
             // Thiết lập dòng chi tiết đơn hàng
             OrderDetail singleDetail = new OrderDetail();
-            singleDetail.setProduct(detail.getProduct());
+            singleDetail.setProduct(refreshedProduct);
             singleDetail.setUnitPrice(unitPrice);
             singleDetail.setQuantity(requestedQty);
             singleDetail.setDiscountAmount(totalDiscountForLine);
@@ -136,11 +148,22 @@ public class SalesOrderService {
             finalOrderDetails.add(singleDetail);
         }
 
-        // 🚀 KHIÊN BẢO VỆ KÉP (ANTI-HACK): Chống sửa đổi mã HTML tăng/giảm ảo số lượng
+        // KHIÊN BẢO VỆ KÉP (ANTI-HACK): Chống sửa đổi mã HTML tăng/giảm ảo số lượng
         if (totalRequestedQty != scannedSerials.size()) {
             throw new IllegalArgumentException("Lỗi nghiêm trọng: Tổng số lượng hàng trong giỏ (" + totalRequestedQty
                     + ") đang không khớp với số mã Serial thực tế được bắn từ súng quét (" + scannedSerials.size()
                     + ")!");
+        }
+
+        // KIỂM TRA FINAL: Đảm bảo không có sản phẩm INACTIVE nào trong danh sách cuối
+        // cùng
+        for (OrderDetail detail : finalOrderDetails) {
+            if (detail.getProduct().getStatus() == com.example.demo.entity.Product.ProductStatus.INACTIVE) {
+                String productName = detail.getProduct().getName() != null ? detail.getProduct().getName()
+                        : "Không xác định";
+                throw new IllegalArgumentException("[CRITICAL] Lỗi hệ thống: Sản phẩm '" + productName
+                        + "' INACTIVE được phát hiện trước khi lưu đơn hàng. Vui lòng liên hệ admin!");
+            }
         }
 
         // Tính tổng tiền cuối cùng bao gồm cả Phí Ship (nếu có)
@@ -185,8 +208,6 @@ public class SalesOrderService {
             }
 
             // A. Chuyển đổi trạng thái máy sang ĐÃ BÁN.
-            // Không gán salesOrder vào ProductItem trước khi đơn hàng đã được lưu,
-            // để tránh Hibernate tham chiếu tới SalesOrder transient.
             item.setStatus(ItemStatus.SOLD);
             itemsToUpdate.add(item);
 
