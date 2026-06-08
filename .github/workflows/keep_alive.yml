@@ -1,0 +1,13 @@
+name: Keep Render Instance Alive
+
+on:
+  schedule:
+    # Chạy mỗi 12 phút (từ phút thứ 0, 12, 24, 36, 48)
+    - cron: "*/12 * * * *"
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Server
+        run: curl -s https://smartstock-wms.onrender.com > /dev/null
