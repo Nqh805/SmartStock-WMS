@@ -15,7 +15,7 @@ Dự án tập trung vào hiệu năng Backend và tính ứng dụng cao với 
 
 ## 🚀 Tính năng chính
 
-** 🖼️ Sơ đồ Use Case Tổng quát **
+# 🖼️ Sơ đồ Use Case Tổng quát 
 
 <p align="center">
   <img src="database/uc-diagram.png" alt="Sơ đồ Use Case SmartStock" width="850">
