@@ -22,9 +22,12 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
             "LOWER(e.email) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Employee> searchAccounts(@Param("keyword") String keyword, Pageable pageable);
 
-    Optional<Employee> findByUserUsername(String username);
+    Optional<Employee> findByUserUsername(String username); // optional trả về null nếu không tìm thấy, tránh lỗi
+                                                            // NoSuchElementException khi dùng .get()
 
     Optional<Employee> findByEmail(String email);
 
     Optional<Employee> findByUser_Username(String username);
+
+    Optional<Employee> findByPhone(String phone);
 }

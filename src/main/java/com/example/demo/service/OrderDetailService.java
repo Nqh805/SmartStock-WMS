@@ -18,9 +18,8 @@ public class OrderDetailService {
     public List<OrderDetailDTO> getOrderDetailsByOrderId(Long orderId) {
         List<OrderDetail> details = orderDetailRepository.findByOrderHeaderId(orderId);
 
-        // Code đã được thu gọn tối đa nhờ Constructor của OrderDetailDTO
         return details.stream()
-                .map(OrderDetailDTO::new) // Tương đương: .map(detail -> new OrderDetailDTO(detail))
+                .map(OrderDetailDTO::new)
                 .collect(Collectors.toList());
     }
 }

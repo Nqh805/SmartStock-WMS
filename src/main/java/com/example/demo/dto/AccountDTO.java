@@ -4,16 +4,17 @@ import lombok.Data;
 
 @Data
 public class AccountDTO {
-    private Long employeeId; // ID của Employee (dùng khi cập nhật)
-    private Integer userId; // ID của User (dùng khi cập nhật)
+    // ID dùng khi update
+    private Long employeeId;
+    private Integer userId;
 
-    // Thông tin bảo mật (Bảng User)
+    // Thông tin bảo mật ( User )
     private String username;
-    private String password; // Khi Edit, nếu để trống tức là không đổi mật khẩu
-    private Integer roleId; // Chứa ID của bảng Role
+    private String password;
+    private Integer roleId;
     private String status; // ACTIVE hoặc INACTIVE
 
-    // Thông tin cá nhân (Bảng Employee)
+    // Thông tin cá nhân ( Employee )
     private String fullName;
     private String email;
     private String phone;

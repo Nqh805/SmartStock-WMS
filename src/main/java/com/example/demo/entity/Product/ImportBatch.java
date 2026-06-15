@@ -54,11 +54,10 @@ public class ImportBatch {
     private WareHouseLocation location;
 
     @Transient
-    public Integer getMaxAllowed() {
+    public Integer getMaxAllowed() { // là Actual Quantity đã nhập của sản phẩm này trong đơn hàng
         if (this.purchaseOrder != null && this.purchaseOrder.getOrderDetails() != null
                 && this.product != null) {
 
-            // Lọc đúng sản phẩm này trong đơn nhập và lấy ActualQuantity
             return this.purchaseOrder.getOrderDetails().stream()
                     .filter(detail -> detail.getProduct() != null
                             && detail.getProduct().getId().equals(this.product.getId()))

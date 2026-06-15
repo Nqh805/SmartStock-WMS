@@ -111,7 +111,7 @@ function openPurchaseDetailModal(row) {
     var myModal = new bootstrap.Modal(document.getElementById('purchaseDetailModal'));
     myModal.show();
 
-    // gửi request lấy danh sách sản phẩm
+    // gửi request lấy chi tiết danh sách sản phẩm
     const params = new URLSearchParams();
     params.append('poId', poId);
 

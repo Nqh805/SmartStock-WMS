@@ -17,7 +17,7 @@ public class SupplierService {
 
     public Page<Supplier> findSuppliers(String keyword, int page, String sortBy, String direction) {
         Sort sort = direction.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page - 1, 10, sort); // Mặc định 10 dòng/trang
+        Pageable pageable = PageRequest.of(page - 1, 10, sort);
 
         return supplierRepository.searchSuppliers(keyword, pageable);
     }
@@ -44,7 +44,7 @@ public class SupplierService {
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy nhà cung cấp!"));
 
-        // LỚP 1: Check công nợ
+        // Check công nợ trước khi xóa
         if (supplier.getSupplierPayable() != null
                 && supplier.getSupplierPayable().compareTo(java.math.BigDecimal.ZERO) > 0) {
             throw new RuntimeException("Không thể xóa! Bạn đang còn nợ nhà cung cấp này "

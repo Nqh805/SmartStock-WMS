@@ -224,12 +224,11 @@ public class ProductController {
         return "redirect:/products/view";
     }
 
-    // API trả về giá nhập mới nhất của sản phẩm dựa trên ID
+    // lấy giá nhập dự kiến trả sang add purchase
     @GetMapping("/{id}/latest-import-price")
     public ResponseEntity<BigDecimal> getLatestImportPrice(@PathVariable Long id) {
         return productRepository.findById(id)
                 .map(product -> {
-                    // Nếu chưa từng nhập hàng (standardCost = null), trả về giá trị 0
                     BigDecimal latestPrice = product.getStandardCost() != null ? product.getStandardCost()
                             : BigDecimal.ZERO;
                     return ResponseEntity.ok(latestPrice);

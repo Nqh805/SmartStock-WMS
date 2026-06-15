@@ -142,12 +142,13 @@ public class RmaController {
     @PostMapping("/warranties/update-status")
     public String updateStatus(@RequestParam("id") Long id,
             @RequestParam("status") RmaTicket.RmaStatus status,
+            @RequestParam("actualReturnDate") java.time.LocalDate actualReturnDate,
             @RequestParam(value = "solution", required = false) String solution,
             @RequestParam(value = "newSerial", required = false) String newSerial,
             RedirectAttributes redirectAttributes) {
         try {
             // Truyền thẳng các tham số xuống Service xử lý
-            rmaService.updateRmaStatusWithSwap(id, status, solution, newSerial);
+            rmaService.updateRmaStatusWithSwap(id, status, actualReturnDate, solution, newSerial);
             redirectAttributes.addFlashAttribute("successMessage", "Đã chốt kết quả và trả máy bảo hành thành công!");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());

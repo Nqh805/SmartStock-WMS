@@ -108,9 +108,7 @@
                     >
                       Giá Lô Nhập
                     </th>
-                    <th scope="col" class="text-nowrap">
-                      Tồn Kho (Đã quét / Tổng)
-                    </th>
+                    <th scope="col" class="text-nowrap">Tiến độ quét</th>
                     <th scope="col" class="text-nowrap">Trạng Thái</th>
                     <th scope="col" class="text-nowrap">Quét Mã</th>
                     <th scope="col" class="text-nowrap">Cất Hàng</th>
@@ -186,8 +184,13 @@
                       th:with="scanned=${scannedCounts.get(batch.id) != null ? scannedCounts.get(batch.id) : 0}, 
                       maxQty=${batch.maxAllowed > 0 ? batch.maxAllowed : (batch.quantity != null ? batch.quantity : 0)}"
                     >
-                      <span class="text-primary" th:text="${scanned}">0</span> /
-                      <span class="text-secondary" th:text="${maxQty}">0</span>
+                      <span class="text-primary fs-6" th:text="${scanned}"
+                        >0</span
+                      >
+                      /
+                      <span class="text-secondary fs-6" th:text="${maxQty}"
+                        >0</span
+                      >
                     </td>
                     <td
                       class="align-middle text-center text-nowrap"
@@ -460,6 +463,15 @@
                       <div
                         class="col-sm-7 fw-bold text-danger"
                         id="detailBatchPrice"
+                      ></div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-sm-5 text-muted fw-semibold">
+                        Tồn kho hiện tại:
+                      </div>
+                      <div
+                        class="col-sm-7 fw-bold text-success fs-6"
+                        id="detailBatchStock"
                       ></div>
                     </div>
                     <div class="row mb-2">

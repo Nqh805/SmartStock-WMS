@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.example.demo.service.ProductService;
 
+import com.example.demo.exception.DuplicateOrderException;
+import com.example.demo.exception.InvalidDataException;
+
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
@@ -70,7 +73,7 @@ public class SalesController {
         model.addAttribute("customers", salesOrderService.getAllCustomers());
         model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
 
-        // SỬA DÒNG NÀY:
+        // Lấy danh sách sản phẩm còn tồn kho để hiển thị trên form
         model.addAttribute("products", productService.getAllProductsWithInventory());
 
         return "add_sales";
@@ -82,24 +85,52 @@ public class SalesController {
             Model model,
             RedirectAttributes redirectAttributes) {
         try {
+            // Gọi tầng Service thực thi logic nghiệp vụ
             salesOrderService.createNewSalesOrder(salesOrder, scannedSerials);
 
             redirectAttributes.addFlashAttribute("successMessage", "Tạo đơn bán hàng và xuất kho thành công!");
             return "redirect:/sales/view";
+
+        } catch (DuplicateOrderException e) {
+            // Custom thông báo A theo ý muốn
+            return reloadFormWithError(model,
+                    "Đã xảy ra lỗi hệ thống khi chốt đơn: Mã đơn hàng đã tồn tại trong hệ thống!");
+
+        } catch (InvalidDataException e) {
+            // Custom thông báo B theo ý muốn
+            return reloadFormWithError(model, "Dữ liệu không hợp lệ: Vui lòng kiểm tra lại số lượng và sản phẩm.");
+
         } catch (IllegalArgumentException e) {
-            model.addAttribute("errorMessage", e.getMessage());
-            model.addAttribute("customers", salesOrderService.getAllCustomers());
-            model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
-            model.addAttribute("products", productService.getAllProductsWithInventory());
-            return "add_sales";
+            // Giữ lại lỗi mặc định nếu muốn
+            return reloadFormWithError(model, e.getMessage());
 
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Đã xảy ra lỗi hệ thống khi chốt đơn: " + e.getMessage());
-            model.addAttribute("customers", salesOrderService.getAllCustomers());
-            model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
-            model.addAttribute("products", productService.getAllProductsWithInventory());
-            return "add_sales";
+            // Ghi log lỗi nghiêm trọng ở đây (ví dụ: log.error("Lỗi hệ thống: ", e))
+            // Trả về thông báo thân thiện, không lộ chi tiết lỗi Exception ra ngoài giao
+            // diện
+            return reloadFormWithError(model, "Đã xảy ra sự cố không xác định. Vui lòng liên hệ quản trị viên!");
         }
+    }
+
+    /**
+     * Hàm private chịu trách nhiệm hiển thị thông báo lỗi và chuẩn bị lại dữ liệu
+     * cho form.
+     * Giúp hàm PostMapping gọn gàng và tuân thủ DRY.
+     */
+    private String reloadFormWithError(Model model, String errorMessage) {
+        model.addAttribute("errorMessage", errorMessage);
+        populateReferenceDataForForm(model);
+        return "add_sales";
+    }
+
+    /**
+     * Hàm private chịu trách nhiệm nạp dữ liệu tham chiếu (Master Data).
+     * Tên hàm rõ ràng (Meaningful Name) nói lên chính xác việc nó làm.
+     */
+    private void populateReferenceDataForForm(Model model) {
+        model.addAttribute("customers", salesOrderService.getAllCustomers());
+        model.addAttribute("warehouses", salesOrderService.getAllWarehouses());
+        model.addAttribute("products", productService.getAllProductsWithInventory());
     }
 
     // 🚀 2. BỔ SUNG API CHO SÚNG QUÉT MÃ GỌI VÀO
@@ -150,6 +181,20 @@ public class SalesController {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Lỗi hệ thống khi thanh toán: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/confirm-delivery")
+    @ResponseBody
+    public ResponseEntity<?> confirmDelivery(@RequestBody java.util.Map<String, String> payload) {
+        try {
+            Long orderId = Long.parseLong(payload.get("orderId"));
+            salesOrderService.confirmShippingDelivery(orderId);
+            return ResponseEntity.ok("Xác nhận giao hàng thành công!");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Lỗi hệ thống khi xác nhận giao hàng: " + e.getMessage());
         }
     }
 

@@ -13,10 +13,17 @@ function openBatchDetailModal(row) {
     document.getElementById('detailBatchDate').textContent = row.getAttribute('data-date');
     document.getElementById('detailBatchPrice').textContent = row.getAttribute('data-price');
     
-    // Xử lý số lượng (Tránh lỗi NaN khi lô mới chưa có data)
-    const quantity = parseInt(row.getAttribute('data-maxallowed')) || parseInt(row.getAttribute('data-quantity')) || 0;
+    // Xử lý số lượng tổng và tiến độ quét
+    const maxQuantity = parseInt(row.getAttribute('data-maxallowed')) || parseInt(row.getAttribute('data-quantity')) || 0;
     const scanned = parseInt(row.getAttribute('data-scanned')) || 0;
-    const unscanned = quantity - scanned;
+    const unscanned = maxQuantity - scanned;
+
+    // Lấy số lượng TỒN KHO THỰC TẾ hiện tại và đẩy vào Modal
+    const currentStock = parseInt(row.getAttribute('data-quantity')) || 0;
+    const detailStock = document.getElementById('detailBatchStock');
+    if (detailStock) {
+        detailStock.innerHTML = currentStock + ' sản phẩm';
+    }
 
     // Đổ định dạng Badge cho mã đơn PO
     const poCode = row.getAttribute('data-po');
@@ -24,17 +31,16 @@ function openBatchDetailModal(row) {
         ? '<span class="badge bg-secondary">Nhập Kho Lẻ</span>' 
         : `<span class="badge bg-info text-dark fw-bold">${poCode}</span>`;
         
-    // Hiển thị tiến độ Tồn Kho
+    // Hiển thị tiến độ Quét mã
     const detailQty = document.getElementById('detailBatchQty');
     if (detailQty) {
         detailQty.innerHTML = `
             <span class="text-primary fw-bold fs-5">${scanned}</span> / 
-            <span class="text-secondary fw-bold fs-5">${quantity}</span> 
+            <span class="text-secondary fw-bold fs-5">${maxQuantity}</span> 
             <span class="text-muted fw-normal">(Đã quét)</span>
             <br><small class="text-danger fw-normal">Còn lại: ${unscanned} sản phẩm chưa nạp mã</small>
         `;
     }
-
     // Thiết lập trạng thái xoay vòng Loading lúc đang gọi API
     const tbody = document.getElementById('detailSerialsBody');
     tbody.innerHTML = `
@@ -56,7 +62,6 @@ function openBatchDetailModal(row) {
         return response.json();
     })
     .then(data => {
-        // 🚀 FIX LỖI "KHÔNG HIỂN THỊ KHI CHƯA CÓ DỮ LIỆU": Bắt chặt mảng rỗng
         if (!data || data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4"><i class="bi bi-info-circle me-1"></i> Lô hàng này hiện tại chưa được nạp mã Serial nào.</td></tr>';
             return;
@@ -212,6 +217,8 @@ function submitSerials() {
     btnSave.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang lưu...';
     btnSave.disabled = true;
 
+    // khi nhấn lưu
+    // gửi request AJAX POST tới controller để lưu danh sách Serial cho lô và update lại số lượng đã quét
     fetch('/batches/scan-serials', {
         method: 'POST',
         headers: {

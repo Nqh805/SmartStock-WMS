@@ -62,7 +62,7 @@ async function openLocationBatchesModal(row) {
   // 2. Hiển thị trạng thái Loading
   tbody.innerHTML = `
     <tr>
-      <td colspan="5" class="text-center py-4 text-muted">
+      <td colspan="6" class="text-center py-4 text-muted">
         <div class="spinner-border spinner-border-sm text-primary me-2"></div>Đang quét dữ liệu trên kệ...
       </td>
     </tr>`;
@@ -83,7 +83,7 @@ async function openLocationBatchesModal(row) {
     if (data.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5" class="text-center py-4 text-muted">
+          <td colspan="6" class="text-center py-4 text-muted">
             <i class="bi bi-inbox fs-3 d-block mb-2"></i>Kệ này hiện đang trống, chưa chứa lô hàng nào.
           </td>
         </tr>`;
@@ -95,14 +95,21 @@ async function openLocationBatchesModal(row) {
       const dateStr = batch.importDate
         ? new Date(batch.importDate).toLocaleDateString("vi-VN")
         : "N/A";
+      const currentQty = parseInt(batch.quantity, 10) || 0;
+      const actionBtn = currentQty === 0
+        ? `<button type="button" class="btn btn-sm btn-danger fw-medium" onclick="removeBatchFromLocation(${batch.id})">
+             <i class="bi bi-trash me-1"></i>Xóa khỏi kệ
+           </button>`
+        : `<span class="badge bg-light text-secondary border"><i class="bi bi-box-seam me-1"></i></span>`;
 
       return `
         <tr>
             <td class="text-center text-muted">${index + 1}</td>
             <td class="fw-bold text-primary">${batch.batchCode}</td>
             <td class="fw-medium">${batch.productName}</td>
-            <td class="text-center fw-bold text-success">${batch.quantity}</td>
+            <td class="text-center fw-bold text-success">${currentQty}</td>
             <td class="text-center">${dateStr}</td>
+            <td class="text-center">${actionBtn}</td>
         </tr>`;
     }).join(''); // Gộp mảng thành chuỗi
 
@@ -111,10 +118,33 @@ async function openLocationBatchesModal(row) {
   } catch (error) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="5" class="text-center py-4 text-danger">
+        <td colspan="6" class="text-center py-4 text-danger">
           <i class="bi bi-exclamation-triangle-fill me-1"></i> Lỗi tải dữ liệu: ${error.message}
         </td>
       </tr>`;
+  }
+}
+
+// Hàm giải phóng lô hàng hết tồn khỏi vị trí kệ
+async function removeBatchFromLocation(batchId) {
+  if (!confirm("Bạn có chắc chắn muốn xóa lô hàng đã hết tồn này khỏi ô lưu trữ để giải phóng vị trí kệ không?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/locations/api/batches/remove/${batchId}`, {
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    alert("Đã giải phóng lô hàng khỏi kệ thành công!");
+    window.location.reload();
+  } catch (error) {
+    alert("Không thể xóa lô hàng: " + error.message);
   }
 }
 

@@ -79,6 +79,7 @@ public class ImportBatchService {
         batch.setLocation(location);
         importBatchRepository.save(batch);
 
+        // set số lượng đã cất = số lượng thực nhận
         if (batch.getPurchaseOrder() != null) {
             orderDetailRepository.findByImportBatchId(batch.getId()).ifPresent(detail -> {
                 if (batch.getLocation() != null) {
@@ -96,16 +97,18 @@ public class ImportBatchService {
         ImportBatch batch = importBatchRepository.findById(batchId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lô hàng này trên hệ thống!"));
 
-        // Đếm TỔNG LỊCH SỬ số lượng mã đã nạp để kiểm tra xem có vượt Đơn nhập không
+        // đếm tổng số lượng đã quét
         long alreadyScannedCount = productItemRepository.countByImportBatchId(batchId);
 
         int maxAllowed = batch.getMaxAllowed();
 
+        // không cho nạp thêm nếu lớn hơn số lượng hàng nhập về
         if (alreadyScannedCount + serials.size() > maxAllowed) {
             throw new RuntimeException("Lỗi: Tổng số mã Serial nạp vào (" + (alreadyScannedCount + serials.size())
                     + ") vượt quá số lượng thực nhận từ đơn mua hàng gốc (" + maxAllowed + ")!");
         }
 
+        // duyệt qua các mã serial và lưu vào chi tiết sản phẩm
         List<ProductItem> itemsToSave = new ArrayList<>();
         for (String serial : serials) {
             if (productItemRepository.existsBySerialNumber(serial)) {
@@ -120,9 +123,10 @@ public class ImportBatchService {
         }
         productItemRepository.saveAll(itemsToSave);
 
-        // Cập nhật số lượng đã quét vào database ngay
-        long totalScannedCount = alreadyScannedCount + serials.size();
-        batch.setQuantity((int) totalScannedCount);
+        // update lại số lượng đã quét
+        // tăng tồn lô theo sốf lượng serial mới nạp
+        int currentQuantity = batch.getQuantity() != null ? batch.getQuantity() : 0;
+        batch.setQuantity(currentQuantity + serials.size());
         importBatchRepository.save(batch);
     }
 }

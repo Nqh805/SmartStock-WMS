@@ -22,16 +22,13 @@ public class ProductService {
     @Autowired
     private ProductRepository productRepository;
 
-    // 🚀 BỔ SUNG LẠI IMPORT BATCH REPO ĐỂ TÍNH TỔNG TỒN VẬT LÝ
     @Autowired
     private ImportBatchRepository importBatchRepository;
 
-    // ==========================================
-    // 🚀 HÀM DÙNG CHUNG: LẤY TỒN KHO & CẬP NHẬT TRẠNG THÁI
-    // ==========================================
+    // tính tổng tồn kho sản phẩm bằng tổng tồn trong tất cả các lô
     private void loadInventoryAndStatus(Product p) {
-        Integer totalOnHand = importBatchRepository.sumQuantityByProductId(p.getId());
-        int qty = totalOnHand != null ? totalOnHand : 0;
+        Integer total = importBatchRepository.sumQuantityByProductId(p.getId());
+        int qty = total != null ? total : 0;
 
         p.setTotalQuantity(qty);
         updateStatusIfNeeded(p, qty);
@@ -63,7 +60,6 @@ public class ProductService {
         Page<Product> productPage = productRepository.searchProducts(cleanKeyword, pId, cId, minPrice, maxPrice,
                 pageable);
 
-        // 🚀 GỌI HÀM DÙNG CHUNG CỰC KỲ GỌN GÀNG
         for (Product p : productPage.getContent()) {
             loadInventoryAndStatus(p);
         }
@@ -163,6 +159,7 @@ public class ProductService {
         }
     }
 
+    // update status theo số lượng tồn
     private ProductStatus determineStatusByInventory(Product product, int totalQuantity) {
         if (product.getStatus() == ProductStatus.INACTIVE) {
             return ProductStatus.INACTIVE;
@@ -250,12 +247,9 @@ public class ProductService {
     // xu ly so luong ton kho tong
     public List<Product> getAllProductsWithInventory() {
         List<Product> products = productRepository.findAll();
-
-        // 🚀 GỌI HÀM DÙNG CHUNG
         for (Product p : products) {
             loadInventoryAndStatus(p);
         }
-
         return products;
     }
 }

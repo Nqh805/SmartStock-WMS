@@ -35,13 +35,13 @@ public class ImportBatchController {
 
         int pageSize = 10;
 
-        // 1. Lấy danh sách lô hàng từ Service
+        // gom toàn bộ danh sách lô hàng
         Page<ImportBatch> batchPage = importBatchService.getBatchesWithPagination(keyword, page, pageSize);
 
-        // 2. Nhờ Service đếm hộ số lượng dựa trên danh sách vừa lấy
+        // đếm số lượng mã serial đã quét
         Map<Long, Long> scannedCounts = importBatchService.getScannedCountsForBatches(batchPage.getContent());
 
-        // 3. Truyền ra View
+        // Truyền ra View
         model.addAttribute("batches", batchPage.getContent());
         model.addAttribute("scannedCounts", scannedCounts);
         model.addAttribute("currentPage", page);
@@ -51,7 +51,9 @@ public class ImportBatchController {
         return "batch_list";
     }
 
-    // API nhận mảng Serial và nạp vào Database
+    // api json nhận mảng Serial từ frontend và nạp vào Database thông qua DTO lưu
+    // serial với id lô
+    // hàng tương ứng
     @PostMapping("/scan-serials")
     @org.springframework.web.bind.annotation.ResponseBody
     public org.springframework.http.ResponseEntity<?> scanSerials(
@@ -64,7 +66,7 @@ public class ImportBatchController {
         }
     }
 
-    // API lấy danh sách mã Serial/IMEI đã nạp của một Lô hàng (Trả về dạng JSON)
+    // api lấy danh sách mã Serial/IMEI trả về modal chi tiết lô hàng
     @GetMapping("/get-serials")
     @ResponseBody
     public java.util.List<java.util.Map<String, Object>> getSerialsByBatch(@RequestParam("batchId") Long batchId) {
@@ -79,6 +81,7 @@ public class ImportBatchController {
                 .collect(java.util.stream.Collectors.toList());
     }
 
+    // api xếp kệ trả về danh sách lô hàng trong modal chi tiết vị trí kệ
     @PostMapping("/api/putaway")
     @ResponseBody
     public ResponseEntity<?> putawayBatchAjax(@RequestBody Map<String, String> payload) {

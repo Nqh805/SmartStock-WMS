@@ -65,7 +65,6 @@ public class SalesOrder extends OrderHeader {
 
     public enum SalesStatus {
         COMPLETED, // Bán tại quầy thành công
-        CANCELLED, // Hủy đơn / Trả hàng
-        REFUNDED // Đã hoàn tiền
+        DELIVERING
     }
 }

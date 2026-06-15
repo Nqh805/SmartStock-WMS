@@ -124,6 +124,7 @@
                     <th>Ngày Tạo</th>
                     <th>Tổng Tiền</th>
                     <th>Trạng Thái</th>
+                    <th>Giao Hàng</th>
                     <th>Thao Tác</th>
                   </tr>
                 </thead>
@@ -142,6 +143,7 @@
                     th:data-cod="${so.cod != null ? so.cod : 0}"
                     th:data-warehouse="${so.wareHouse != null ? so.wareHouse.name : 'Chưa phân kho'}"
                     th:data-created="${so.createdAt != null ? #temporals.format(so.createdAt, 'dd/MM/yyyy HH:mm') : ''}"
+                    th:data-completed="${so.completedAt != null ? #temporals.format(so.completedAt, 'dd/MM/yyyy HH:mm') : ''}"
                     th:data-amount="${so.totalSalesAmount != null ? so.totalSalesAmount : 0}"
                     th:data-paid="${so.paidAmount != null ? so.paidAmount : 0}"
                     th:data-payment="${so.paymentStatus != null ? so.paymentStatus.name() : 'UNPAID'}"
@@ -182,6 +184,11 @@
                           >Hoàn tất</span
                         >
                         <span
+                          th:if="${so.status?.name() == 'DELIVERING'}"
+                          class="badge bg-info text-dark"
+                          >Đang giao</span
+                        >
+                        <span
                           th:if="${so.status?.name() == 'CANCELLED'}"
                           class="badge bg-danger"
                           >Đã hủy</span
@@ -217,6 +224,37 @@
                       </div>
                     </td>
                     <td class="align-middle text-center">
+                      <button
+                        th:if="${so.deliveryMethod?.name() == 'SHIPPING' and so.status?.name() == 'DELIVERING'}"
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        onclick="
+                          event.stopPropagation();
+                          openDeliveryModal(this);
+                        "
+                        th:attr="data-id=${so.id}, data-code=${so.code}"
+                        data-bs-toggle="tooltip"
+                        title="Xác nhận đã giao hàng"
+                      >
+                        <i class="bi bi-truck"></i>
+                      </button>
+
+                      <span
+                        th:if="${so.deliveryMethod?.name() == 'SHIPPING' and so.status?.name() == 'COMPLETED'}"
+                        class="text-muted"
+                      >
+                        -
+                      </span>
+
+                      <span
+                        th:if="${so.deliveryMethod?.name() != 'SHIPPING'}"
+                        class="text-secondary"
+                        style="font-size: 0.85rem"
+                      >
+                        N/A
+                      </span>
+                    </td>
+                    <td class="align-middle text-center">
                       <a
                         th:href="@{/sales/print/{id}(id=${so.id})}"
                         target="_blank"
@@ -246,7 +284,7 @@
                   </tr>
 
                   <tr th:if="${#lists.isEmpty(salesOrders)}">
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="9" class="text-center py-5 text-muted">
                       <i class="bi bi-inbox fs-2 d-block mb-2"></i>Không có đơn
                       bán hàng nào.
                     </td>
@@ -368,6 +406,15 @@
                     Ngày tạo đơn:
                   </div>
                   <div class="col-sm-8" id="detailSoCreated"></div>
+                </div>
+                <div class="row mb-2" id="rowSoCompleted">
+                  <div class="col-sm-4 text-muted fw-semibold">
+                    Giao thành công:
+                  </div>
+                  <div
+                    class="col-sm-8 fw-bold text-success"
+                    id="detailSoCompleted"
+                  ></div>
                 </div>
                 <div class="row mt-3">
                   <div class="col-12 text-muted fw-semibold mb-1">
@@ -513,6 +560,66 @@
               onclick="submitPayment()"
             >
               <i class="bi bi-check-circle me-2"></i>Xác nhận thu tiền
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="deliveryConfirmModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title fw-bold">
+              <i class="bi bi-truck me-2"></i>Xác nhận Giao hàng
+            </h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body p-4">
+            <input type="hidden" id="deliveryOrderId" />
+            <div class="text-center mb-3">
+              <i
+                class="bi bi-box-seam text-primary"
+                style="font-size: 3rem"
+              ></i>
+            </div>
+            <p class="text-center fs-6">
+              Bạn có chắc chắn đơn hàng
+              <strong id="deliveryOrderCode" class="text-danger"></strong> đã
+              được giao thành công đến tay khách hàng?
+            </p>
+            <p class="text-muted text-center" style="font-size: 0.85rem">
+              Hệ thống sẽ chuyển trạng thái thành <strong>Đã giao</strong> và
+              ghi nhận thời gian hoàn thành ngay lúc này.
+            </p>
+            <div
+              id="deliveryError"
+              class="alert alert-danger d-none mt-2"
+            ></div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button
+              type="button"
+              class="btn btn-secondary px-4"
+              data-bs-dismiss="modal"
+            >
+              Hủy
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary px-4 fw-bold"
+              onclick="submitDelivery()"
+            >
+              <i class="bi bi-check-circle me-2"></i>Xác nhận đã giao
             </button>
           </div>
         </div>

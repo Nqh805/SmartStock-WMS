@@ -17,7 +17,11 @@
               Quản lý nhà cung cấp, công nợ và trạng thái hoạt động.
             </p>
           </div>
-          <a th:href="@{/suppliers/add}" class="btn btn-success text-nowrap">
+          <a
+            sec:authorize="hasAnyRole('MANAGER', 'INSPECTOR')"
+            th:href="@{/suppliers/add}"
+            class="btn btn-success text-nowrap"
+          >
             <i class="bi bi-plus-lg"></i> Thêm đối tác mới
           </a>
         </div>
@@ -214,11 +218,13 @@
                     </td>
                     <td class="align-middle text-center text-nowrap">
                       <a
+                        sec:authorize="hasAnyRole('MANAGER', 'INSPECTOR')"
                         th:href="@{'/suppliers/edit/' + ${s.id}}"
                         class="btn btn-sm btn-outline-primary me-1"
                         >Sửa</a
                       >
                       <button
+                        sec:authorize="hasAnyRole('MANAGER', 'INSPECTOR')"
                         type="button"
                         class="btn btn-sm btn-outline-danger"
                         data-bs-toggle="modal"

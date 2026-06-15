@@ -28,6 +28,7 @@ import com.example.demo.dto.ReceiptFormDTO;
 import com.example.demo.entity.Order.PurchaseOrder;
 import com.example.demo.entity.Order.PaymentTransaction;
 import com.example.demo.entity.Partner.Supplier;
+import com.example.demo.entity.Partner.SupplierStatus;
 import com.example.demo.entity.Warehouse.WareHouse;
 import com.example.demo.repository.PaymentTransactionRepository;
 import com.example.demo.repository.ProductRepository;
@@ -101,11 +102,11 @@ public class PurchaseOrderController {
         }
     }
 
-    // api chi tiết đơn hàng
-    // api chi tiết đơn hàng (Đã đổi thành GET chuẩn RESTful)
+    // api lấy chi tiết đơn hàng
     @GetMapping("/get-order-details")
     @ResponseBody
     public List<OrderDetailDTO> getOrderDetails(@RequestParam Long poId) {
+        // gọi service trả về dto orderdetail
         return orderDetailService.getOrderDetailsByOrderId(poId);
     }
 
@@ -162,7 +163,9 @@ public class PurchaseOrderController {
         model.addAttribute("purchaseOrder", po);
         model.addAttribute("products", productRepository.findAll());
 
-        model.addAttribute("suppliers", supplierRepository.findAll());
+        // tìm supplier active và chỉ gửi active sang view
+        List<Supplier> activeSuppliers = supplierRepository.findBySupplierStatus(SupplierStatus.ACTIVE);
+        model.addAttribute("suppliers", activeSuppliers);
         model.addAttribute("warehouses", wareHouseRepository.findAll());
 
         return "add_purchase";
@@ -184,7 +187,7 @@ public class PurchaseOrderController {
             model.addAttribute("errorMessage", e.getMessage());
 
             model.addAttribute("products", productRepository.findAll());
-            model.addAttribute("suppliers", supplierRepository.findAll());
+            model.addAttribute("suppliers", supplierRepository.findBySupplierStatus(SupplierStatus.ACTIVE));
             model.addAttribute("warehouses", wareHouseRepository.findAll());
 
             return "add_purchase";
@@ -193,7 +196,7 @@ public class PurchaseOrderController {
             model.addAttribute("errorMessage", "Đã xảy ra lỗi hệ thống khi lập đơn: " + e.getMessage());
 
             model.addAttribute("products", productRepository.findAll());
-            model.addAttribute("suppliers", supplierRepository.findAll());
+            model.addAttribute("suppliers", supplierRepository.findBySupplierStatus(SupplierStatus.ACTIVE));
             model.addAttribute("warehouses", wareHouseRepository.findAll());
 
             return "add_purchase";
@@ -232,7 +235,7 @@ public class PurchaseOrderController {
         }
     }
 
-    // 1. API XÓA HẲN ĐƠN HÀNG
+    // Xóa đơn hàng
     @PostMapping("/delete/{id}")
     public String deletePurchaseOrder(@PathVariable("id") Long id, RedirectAttributes redirectAttributes) {
         try {
@@ -244,7 +247,7 @@ public class PurchaseOrderController {
         return "redirect:/purchases/view";
     }
 
-    // 2. API TỪ CHỐI DUYỆT (Gọi bằng AJAX từ Modal)
+    // từ chối đơn hàng
     @PostMapping("/reject/{id}")
     @ResponseBody
     public org.springframework.http.ResponseEntity<?> rejectPurchaseOrder(@PathVariable("id") Long poId) {

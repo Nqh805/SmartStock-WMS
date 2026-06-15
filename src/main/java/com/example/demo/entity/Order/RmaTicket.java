@@ -59,6 +59,10 @@ public class RmaTicket {
     @Column(name = "replacement_serial_number")
     private String replacementSerialNumber;
 
+    @Column(name = "actual_return_date")
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    private LocalDate actualReturnDate;
+
     public enum RmaType {
         WARRANTY,
     }

@@ -36,15 +36,15 @@ public class Product {
     @Column(name = "status", nullable = false)
     private ProductStatus status;
 
-    // 1. GIÁ BÁN NIÊM YẾT (Dùng cho luồng Bán hàng)
+    // giá niêm yết
     @Column(name = "base_price", precision = 15, scale = 2)
     private BigDecimal basePrice;
 
-    // 2. GIÁ VỐN TRUNG BÌNH - MAC (Dùng cho Kế toán tính lãi lỗ)
+    // giá vốn (MAC)
     @Column(name = "cost_price", precision = 15, scale = 2)
     private BigDecimal costPrice;
 
-    // 3. GIÁ NHẬP THAM CHIẾU
+    // giá chuẩn
     @Column(name = "standard_cost", precision = 15, scale = 2)
     private BigDecimal standardCost;
 

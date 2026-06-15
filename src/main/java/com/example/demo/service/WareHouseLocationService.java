@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WareHouseLocationService {
 
     private final WareHouseLocationRepository locationRepository;
+    private final com.example.demo.repository.WareHouseRepository wareHouseRepository;
 
     public Page<WareHouseLocation> getLocationsWithPagination(String keyword, int pageNo, int pageSize) {
         // Sắp xếp theo Tên Kho -> Dãy Kệ -> Tầng -> Ô cho dễ nhìn
@@ -29,10 +30,6 @@ public class WareHouseLocationService {
         String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
         return locationRepository.searchLocations(searchKeyword, pageable);
     }
-
-    // Nhớ inject thêm WareHouseRepository vào đầu class bằng
-    // @RequiredArgsConstructor hoặc khai báo biến
-    private final com.example.demo.repository.WareHouseRepository wareHouseRepository;
 
     @Transactional
     public void createLocation(Long warehouseId, String shelf, String tier, String bin, String code) {

@@ -63,6 +63,7 @@ public class WareHouseLocationController {
             // Đóng gói dữ liệu thành JSON an toàn
             List<Map<String, Object>> result = batches.stream().map(b -> {
                 Map<String, Object> map = new HashMap<>();
+                map.put("id", b.getId()); // <-- THÊM DÒNG NÀY ĐỂ JS LẤY ĐƯỢC ID LÔ HÀNG
                 map.put("batchCode", b.getBatchCode());
                 map.put("productName", b.getProduct() != null ? b.getProduct().getName() : "Sản phẩm ẩn");
                 map.put("quantity", b.getQuantity());
@@ -71,9 +72,25 @@ public class WareHouseLocationController {
             }).collect(Collectors.toList());
 
             return ResponseEntity.ok(result);
-
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Lỗi truy xuất dữ liệu: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/api/batches/remove/{batchId}")
+    @ResponseBody
+    public ResponseEntity<?> removeBatchFromLocation(@PathVariable("batchId") Long batchId) {
+        try {
+            ImportBatch batch = importBatchRepository.findById(batchId)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy lô hàng này!"));
+
+            // Giải phóng lô hàng bằng cách set vị trí kệ về null
+            batch.setLocation(null);
+            importBatchRepository.save(batch);
+
+            return ResponseEntity.ok("Đã giải phóng lô hàng khỏi vị trí kệ thành công!");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Lỗi hệ thống: " + e.getMessage());
         }
     }
 

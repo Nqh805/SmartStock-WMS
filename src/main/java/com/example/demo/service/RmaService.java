@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.entity.Order.RmaTicket;
+import com.example.demo.entity.Product.ItemStatus;
 import com.example.demo.entity.Product.ProductItem;
 import com.example.demo.repository.ProductItemRepository;
 import com.example.demo.repository.RmaTicketRepository;
@@ -12,21 +13,30 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class RmaService {
 
+    // --- CONSTANTS ---
+    private static final String RMA_CODE_PREFIX = "RMA-";
+    private static final String DEFAULT_HIDDEN_PRODUCT_NAME = "Sản phẩm ẩn";
+    private static final DateTimeFormatter RMA_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyMMddHHmmss");
+    private static final DateTimeFormatter EXPIRY_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    // --- REPOSITORIES ---
     private final RmaTicketRepository rmaTicketRepository;
     private final ProductItemRepository productItemRepository;
 
-    public Page<RmaTicket> getRmaTickets(String keyword, java.time.LocalDateTime startDate,
-            java.time.LocalDateTime endDate, int page, int size) {
-        // Sắp xếp ID giảm dần để Phiếu mới nhất hiện lên đầu
+    public Page<RmaTicket> getRmaTickets(String keyword, LocalDateTime startDate,
+            LocalDateTime endDate, int page, int size) {
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by("id").descending());
 
         String searchKeyword = (keyword != null && !keyword.trim().isEmpty()) ? keyword.trim() : null;
-        // Gọi hàm searchWithFilters thay vì hàm cũ
         return rmaTicketRepository.searchWithFilters(searchKeyword, startDate, endDate, pageable);
     }
 
@@ -35,100 +45,105 @@ public class RmaService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu RMA mang mã ID: " + id));
     }
 
+    // Xử lý tạo mới một phiếu tiếp nhận bảo hành từ mã Serial của thiết bị.
     @Transactional
     public void createRmaTicket(RmaTicket rmaTicket, String serialNumber) {
-        // 1. Kiểm tra thiết bị có tồn tại không
         ProductItem item = productItemRepository.findBySerialNumber(serialNumber)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thiết bị có Serial: " + serialNumber));
-        if (item.getStatus() != com.example.demo.entity.Product.ItemStatus.SOLD) {
-            throw new IllegalStateException("Lỗi nghiệp vụ: Chỉ thiết bị đã xuất bán mới được lập phiếu RMA!");
-        }
-        if (item.isWarrantyExpired()) {
-            String expDateStr = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-                    .format(item.getWarrantyExpirationDate());
-            throw new IllegalStateException(
-                    "Từ chối tiếp nhận: Thiết bị này đã HẾT HẠN BẢO HÀNH vào ngày " + expDateStr + "!");
-        }
-        // 2. Tự động sinh mã phiếu (VD: RMA-20231105...)
-        if (rmaTicket.getCode() == null || rmaTicket.getCode().isEmpty()) {
-            String timeCode = java.time.format.DateTimeFormatter.ofPattern("yyMMddHHmmss")
-                    .format(java.time.LocalDateTime.now());
-            rmaTicket.setCode("RMA-" + timeCode);
-        }
 
-        // 3. Gắn thông tin cố định từ thiết bị vào phiếu
+        // validate điều kiện bảo hành
+        validateItemForRma(item);
+
+        ensureRmaCode(rmaTicket);
+
         rmaTicket.setSerialNumber(item.getSerialNumber());
-        rmaTicket.setProductName(item.getProduct() != null ? item.getProduct().getName() : "Sản phẩm ẩn");
-        rmaTicket.setStatus(RmaTicket.RmaStatus.PROCESSING); // Trạng thái mặc định
+        rmaTicket.setProductName(item.getProduct() != null ? item.getProduct().getName() : DEFAULT_HIDDEN_PRODUCT_NAME);
+        rmaTicket.setStatus(RmaTicket.RmaStatus.PROCESSING);
 
-        // 4. Lưu phiếu RMA
         rmaTicketRepository.save(rmaTicket);
 
-        // 5. Cập nhật trạng thái của thiết bị (ProductItem) thành Hàng Lỗi/Đổi Trả
-        item.setStatus(com.example.demo.entity.Product.ItemStatus.DEFECTIVE);
+        // chuyển thiết bị sang lỗi
+        item.setStatus(ItemStatus.DEFECTIVE);
         productItemRepository.save(item);
     }
 
     @Transactional
     public void updateRmaStatus(Long id, RmaTicket.RmaStatus newStatus, String solution) {
-        RmaTicket ticket = rmaTicketRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu RMA mang mã ID: " + id));
-
+        RmaTicket ticket = getRmaTicketById(id);
         ticket.setStatus(newStatus);
 
-        // Cập nhật thêm phương án xử lý cuối cùng nếu Kỹ thuật viên có gõ vào
         if (solution != null && !solution.trim().isEmpty()) {
             ticket.setWarrantySolution(solution);
         }
         rmaTicketRepository.save(ticket);
 
-        // Trả lại trạng thái máy cho khách (Dù sửa thành công hay từ chối thì máy cũng
-        // được trả về tay khách)
-        ProductItem item = productItemRepository.findBySerialNumber(ticket.getSerialNumber()).orElse(null);
-        if (item != null) {
-            item.setStatus(com.example.demo.entity.Product.ItemStatus.SOLD);
+        productItemRepository.findBySerialNumber(ticket.getSerialNumber()).ifPresent(item -> {
+            item.setStatus(ItemStatus.SOLD);
             productItemRepository.save(item);
-        }
+        });
     }
 
     @Transactional
-    public void updateRmaStatusWithSwap(Long id, RmaTicket.RmaStatus newStatus, String solution, String newSerial) {
-        RmaTicket ticket = rmaTicketRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phiếu RMA mang mã ID: " + id));
+    public void updateRmaStatusWithSwap(Long id, RmaTicket.RmaStatus newStatus, LocalDate actualReturnDate,
+            String solution, String newSerial) {
 
-        // 1. Cập nhật trạng thái phiếu (Mặc định là COMPLETED gửi từ form ẩn) và ghi
-        // chú giải pháp
+        RmaTicket ticket = getRmaTicketById(id);
+
+        // Cập nhật thông tin nghiệm thu của phiếu bảo hành
         ticket.setStatus(newStatus);
+        ticket.setActualReturnDate(actualReturnDate);
         if (solution != null && !solution.trim().isEmpty()) {
             ticket.setWarrantySolution(solution.trim());
         }
 
-        // 2. Xử lý lưu vết máy đổi mới nếu nhân viên có quét mã
         if (newSerial != null && !newSerial.trim().isEmpty()) {
-            String cleanNewSerial = newSerial.trim();
-
-            // Lớp chặn an toàn: Kiểm tra trùng lặp trên hệ thống
-            if (productItemRepository.existsBySerialNumber(cleanNewSerial)) {
-                throw new IllegalArgumentException(
-                        "Lỗi: Mã Serial mới '" + cleanNewSerial + "' đã tồn tại trên hệ thống từ trước!");
-            }
-            ticket.setReplacementSerialNumber(cleanNewSerial);
-
-            // xử lý thông tin máy bảo hành mới
-            ProductItem oldItem = productItemRepository.findBySerialNumber(ticket.getSerialNumber())
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thiết bị lỗi gốc trong DB!"));
-
-            ProductItem newItem = new ProductItem();
-            newItem.setSerialNumber(cleanNewSerial);
-            newItem.setProduct(oldItem.getProduct()); // Cùng dòng sản phẩm (Ví dụ: iPhone 15)
-            newItem.setStatus(com.example.demo.entity.Product.ItemStatus.SOLD);
-
-            // lưu lại thông tin đơn bán của máy cũ
-            newItem.setSalesOrder(oldItem.getSalesOrder());
-
-            productItemRepository.save(newItem);
+            processReplacementDevice(ticket, newSerial.trim());
         }
 
         rmaTicketRepository.save(ticket);
+    }
+
+    // ======== PRIVATE HELPER METHODS ========
+
+    private void validateItemForRma(ProductItem item) {
+        if (item.getStatus() != ItemStatus.SOLD) {
+            throw new IllegalStateException("Lỗi nghiệp vụ: Chỉ thiết bị đã xuất bán mới được lập phiếu RMA!");
+        }
+        if (item.isWarrantyExpired()) {
+            String expDateStr = EXPIRY_DATE_FORMATTER.format(item.getWarrantyExpirationDate());
+            throw new IllegalStateException(
+                    "Từ chối tiếp nhận: Thiết bị này đã HẾT HẠN BẢO HÀNH vào ngày " + expDateStr + "!");
+        }
+    }
+
+    // sinh mã phiếu RMA tự động
+    private void ensureRmaCode(RmaTicket rmaTicket) {
+        if (rmaTicket.getCode() == null || rmaTicket.getCode().isEmpty()) {
+            String timeCode = RMA_TIME_FORMATTER.format(LocalDateTime.now());
+            rmaTicket.setCode(RMA_CODE_PREFIX + timeCode);
+        }
+    }
+
+    private void processReplacementDevice(RmaTicket ticket, String cleanNewSerial) {
+        // Lớp chặn an toàn: Ngăn chặn việc nhập trùng mã Serial đã có trên hệ thống
+        if (productItemRepository.existsBySerialNumber(cleanNewSerial)) {
+            throw new IllegalArgumentException(
+                    "Lỗi: Mã Serial mới '" + cleanNewSerial + "' đã tồn tại trên hệ thống từ trước!");
+        }
+
+        ticket.setReplacementSerialNumber(cleanNewSerial);
+
+        // Trích xuất thiết bị lỗi để lấy thông tin kế thừa cho máy đổi bảo hành
+        ProductItem oldItem = productItemRepository.findBySerialNumber(ticket.getSerialNumber())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thiết bị lỗi gốc trong DB!"));
+
+        ProductItem newItem = new ProductItem();
+        newItem.setSerialNumber(cleanNewSerial);
+        newItem.setProduct(oldItem.getProduct());
+        newItem.setStatus(ItemStatus.SOLD);
+
+        newItem.setSalesOrder(oldItem.getSalesOrder());
+
+        productItemRepository.save(newItem);
     }
 }

@@ -20,6 +20,17 @@ function openSalesDetailModal(row) {
     // 🚀 KẾT THÚC
     document.getElementById('detailSoWarehouse').textContent = row.getAttribute('data-warehouse');
     document.getElementById('detailSoCreated').textContent = row.getAttribute('data-created');
+    const completedTime = row.getAttribute('data-completed');
+    const completedCell = document.getElementById('detailSoCompleted');
+    
+    if (completedTime && completedTime.trim() !== '') {
+        completedCell.textContent = completedTime;
+        // Bạn có thể đổi màu text thành màu xanh lá để làm nổi bật trạng thái đã giao thành công
+        completedCell.className = "col-sm-8 fw-bold text-success"; 
+    } else {
+        completedCell.textContent = 'Chưa hoàn thành giao hàng';
+        completedCell.className = "col-sm-8 text-muted fst-italic"; // Dạng chữ nghiêng xám nếu chưa giao
+    }
     document.getElementById('detailSoNote').textContent = row.getAttribute('data-note') || 'Không có ghi chú';
 
     // dia chi giao hang
@@ -50,6 +61,7 @@ function openSalesDetailModal(row) {
     let statusHtml = '';
     switch (salesStatus) {
         case 'COMPLETED': statusHtml = '<span class="badge bg-success">Hoàn tất</span>'; break;
+        case 'DELIVERING': statusHtml = '<span class="badge bg-info text-dark">Đang giao</span>'; break;
         case 'CANCELLED': statusHtml = '<span class="badge bg-danger">Đã hủy</span>'; break;
         case 'REFUNDED':  statusHtml = '<span class="badge bg-warning text-dark">Hoàn tiền</span>'; break;
         default: statusHtml = `<span class="badge bg-secondary">${salesStatus || 'N/A'}</span>`;
@@ -126,7 +138,46 @@ function openSalesDetailModal(row) {
             </tr>`;
     });
 }
+// 1. Hàm mở Modal xác nhận giao hàng
+function openDeliveryModal(btn) {
+    const orderId = btn.getAttribute('data-id');
+    const orderCode = btn.getAttribute('data-code');
+    
+    if (!orderId) return;
 
+    // Gắn dữ liệu vào Modal
+    document.getElementById('deliveryOrderId').value = orderId;
+    document.getElementById('deliveryOrderCode').textContent = orderCode;
+    document.getElementById('deliveryError').classList.add('d-none');
+
+    // Hiển thị Modal
+    var deliveryModal = new bootstrap.Modal(document.getElementById('deliveryConfirmModal'));
+    deliveryModal.show();
+}
+
+// 2. Hàm gửi API xác nhận khi bấm nút trong Modal
+function submitDelivery() {
+    const orderId = document.getElementById('deliveryOrderId').value;
+    const errorDiv = document.getElementById('deliveryError');
+
+    fetch('/sales/api/confirm-delivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderId })
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err);
+        }
+        // Thành công -> Reload để load lại badge "Đã giao"
+        window.location.reload();
+    })
+    .catch(error => {
+        errorDiv.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${error.message}`;
+        errorDiv.classList.remove('d-none');
+    });
+}
 function openPaymentModal(btn) {
     const id = btn.getAttribute('data-id');
     const code = btn.getAttribute('data-code');

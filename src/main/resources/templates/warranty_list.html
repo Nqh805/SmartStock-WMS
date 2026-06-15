@@ -139,8 +139,10 @@
                              data-cus-phone=${rma.customer != null ? rma.customer.phone : 'N/A'},
                              data-cus-address=${rma.customer != null ? rma.customer.address : 'N/A'},
                              data-est-date=${rma.estimatedCompletionDate != null ? #temporals.format(rma.estimatedCompletionDate, 'dd/MM/yyyy') : 'Chưa hẹn'},
+                             data-actual-date=${rma.actualReturnDate != null ? #temporals.format(rma.actualReturnDate, 'dd/MM/yyyy') : 'Chưa trả'},
                              data-notes=${rma.notes},
-                             data-solution=${rma.warrantySolution}"
+                             data-solution=${rma.warrantySolution},
+                             data-new-serial=${rma.replacementSerialNumber}"
                   >
                     <td
                       class="text-center text-muted"
@@ -325,6 +327,10 @@
                   <span class="text-muted me-2">Ngày hẹn trả:</span>
                   <strong class="text-danger fs-5" id="dtEstDate"></strong>
                 </div>
+                <div class="mb-2">
+                  <span class="text-muted me-2">Ngày trả thực tế:</span>
+                  <strong class="text-success fs-5" id="dtActualDate"></strong>
+                </div>
               </div>
             </div>
 
@@ -332,10 +338,21 @@
             <h6 class="fw-bold text-primary mb-2">
               <i class="bi bi-tools me-1"></i>Phương án xử lý:
             </h6>
-            <div
-              class="p-3 bg-white border border-primary rounded text-primary fw-bold mb-3"
-              id="dtSolution"
-            ></div>
+            <div class="p-3 bg-white border border-primary rounded mb-3">
+              <div class="text-primary fw-bold" id="dtSolution"></div>
+
+              <div
+                id="dtNewSerialWrapper"
+                class="mt-2 pt-2 border-top border-success border-opacity-25 d-none"
+              >
+                <i class="bi bi-arrow-return-right me-1 text-success"></i>
+                <span class="text-muted">Serial/IMEI máy đổi: </span>
+                <span
+                  class="text-success fw-bold font-monospace fs-6"
+                  id="dtNewSerial"
+                ></span>
+              </div>
+            </div>
 
             <h6 class="fw-bold text-secondary mb-2">
               Tình trạng lỗi do khách báo:
@@ -515,6 +532,7 @@
           dtCusPhone: "data-cus-phone",
           dtCusAddress: "data-cus-address",
           dtEstDate: "data-est-date",
+          dtActualDate: "data-actual-date", // Bổ sung map ID này
         };
 
         for (const [id, attr] of Object.entries(dataMap)) {
@@ -525,6 +543,17 @@
           row.getAttribute("data-notes") || "Không có ghi chú";
         document.getElementById("dtSolution").textContent =
           row.getAttribute("data-solution") || "Chưa có phương án cụ thể";
+
+        // Xử lý hiển thị mã Serial máy mới
+        const newSerial = row.getAttribute("data-new-serial");
+        const serialWrapper = document.getElementById("dtNewSerialWrapper");
+
+        if (newSerial && newSerial.trim() !== "" && newSerial !== "null") {
+          serialWrapper.classList.remove("d-none");
+          document.getElementById("dtNewSerial").textContent = newSerial;
+        } else {
+          serialWrapper.classList.add("d-none"); // Ẩn đi nếu không có serial mới
+        }
 
         bootstrap.Modal.getOrCreateInstance(
           document.getElementById("rmaDetailModal"),
