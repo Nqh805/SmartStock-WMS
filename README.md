@@ -48,3 +48,7 @@ Dự án tập trung vào hiệu năng Backend và tính ứng dụng cao với 
 - `src/main/java`: Chứa mã nguồn xử lý logic (Controller, Service, Repository).
 - `src/main/resources`: Chứa file cấu hình và các tài nguyên giao diện (Static/Templates).
 - `database/`: Chứa các bản vẽ ERD và script SQL khởi tạo.
+
+## 📄 Tài liệu dự án
+
+- [Tải về hoặc Xem báo cáo chi tiết (PDF)](docs/Báo-cáo-phần-mềm-SmartSotck.pdf)
