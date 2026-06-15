@@ -51,4 +51,4 @@ Dự án tập trung vào hiệu năng Backend và tính ứng dụng cao với 
 
 ## 📄 Tài liệu dự án
 
-- [Tải về hoặc Xem báo cáo chi tiết (PDF)](docs/Báo-cáo-phần-mềm-SmartSotck.pdf)
+- [Tải về hoặc Xem báo cáo chi tiết (PDF)](database/Báo-cáo-phần-mềm-SmartSotck.pdf)
