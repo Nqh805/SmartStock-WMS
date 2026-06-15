@@ -13,22 +13,15 @@ Dự án tập trung vào hiệu năng Backend và tính ứng dụng cao với 
 - **Database:** MySQL
 - **Công cụ thiết kế:** Visual Paradigm (ER Diagram, Use Case)
 
-### 🖼️ Sơ đồ Use Case Tổng quát
+## 🚀 Tính năng chính
+
+** 🖼️ Sơ đồ Use Case Tổng quát **
 
 <p align="center">
   <img src="database/uc-diagram.png" alt="Sơ đồ Use Case SmartStock" width="850">
   <br>
   <em>Hình 1: Sơ đồ chức năng hệ thống SmartStock</em>
 </p>
-
-## 🚀 Tính năng chính
-
-** 🖼️ Sơ đồ Use Case Tổng quát **
-
-1.  **Quản lý Kho & Sản phẩm:** Theo dõi nhập/xuất, tồn kho theo thời gian thực, hỗ trợ quản lý đa kho.
-2.  **Quản lý Đối Tác:** Quản lý thông tin Nhà cung cấp và Khách hàng, hỗ trợ đánh giá mức độ uy tín dựa trên lịch sử giao dịch.
-3.  **Điều phối Vận hành:** Hỗ trợ theo dõi chi tiết đơn hàng, trạng thái các đơn hàng, lộ trình và cập nhật tồn kho thực tế. Hệ thống có trang giao hành riêng dành cho Nhân Viên Giao Hàng.
-4.  **Quản trị & Bảo mật:** Phân quyền người dùng gồm 3 tác nhân chính là Thủ Kho, Kiểm Kho, và Nhân Viên Giao Hàng. Hỗ trợ quản lý thông tin người dùng, bảo mật tài khoản và lưu vết lịch sử hoạt động.
 
 ## 📋 Hướng dẫn cài đặt
 
